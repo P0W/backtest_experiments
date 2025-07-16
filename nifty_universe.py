@@ -245,12 +245,30 @@ NIFTY_200_ADDITIONAL = [
     "ZYDUSLIFE.NS",
 ]
 
+# ETF Universe for Indian market
+ETF_UNIVERSE = [
+    "NIFTYBEES.NS",  # Nifty 50 ETF
+    "SETFNN50.NS",  # Nifty Next 50 ETF
+    "GOLDBEES.NS",  # Gold ETF
+    "SILVERBEES.NS",  # Silver ETF
+    "CPSEETF.NS",  # CPSE ETF
+    "PSUBNKBEES.NS",  # PSU Bank ETF
+    "PHARMABEES.NS",  # Pharma ETF
+    "ITBEES.NS",  # IT ETF
+    "AUTOBEES.NS",  # Auto ETF
+    # "INFRAIETF.NS",  # Infra ETF - Removed due to limited data (starts 2024-06-24)
+    "SHARIABEES.NS",  # Shariah ETF
+    "DIVOPPBEES.NS",  # Dividend Opportunities ETF
+    "CONSUMBEES.NS",  # Consumer Goods ETF
+]
+
+
 # Combined universe lists
 NIFTY_100 = NIFTY_50 + NIFTY_100_ADDITIONAL
 NIFTY_200 = NIFTY_100 + NIFTY_200_ADDITIONAL
 
 # Mapping for easy access
-NIFTY_UNIVERSES = {"nifty50": NIFTY_50, "nifty100": NIFTY_100, "nifty200": NIFTY_200}
+NIFTY_UNIVERSES = {"nifty50": NIFTY_50, "nifty100": NIFTY_100, "nifty200": NIFTY_200, "etf": ETF_UNIVERSE}
 
 
 def get_nifty_universe(universe_name):
@@ -468,6 +486,7 @@ SECTOR_STOCKS = {
     "telecom": TELECOM_STOCKS,
     "cement": CEMENT_STOCKS,
     "retail": RETAIL_STOCKS,
+    "etf": ETF_UNIVERSE,
 }
 
 

@@ -19,7 +19,7 @@ from nifty_universe import (get_available_sectors, get_available_universes,
                             get_sector_stocks, get_universe_info)
 from strategies import (AdaptiveMomentumConfig, NiftyShopConfig, PairsConfig,
                         PMVMomentumConfig, PortfolioMeanReversionConfig,
-                        StatisticalTrendConfig)
+                        StatisticalTrendConfig, ETFMomentumConfig)
 
 # Registry of available strategies
 STRATEGY_REGISTRY = {
@@ -53,6 +53,11 @@ STRATEGY_REGISTRY = {
         "description": "Simple buy-below-MA, sell-on-target strategy with averaging down",
         "config_class": NiftyShopConfig,
     },
+    "etf": {
+        "name": "ETF Momentum Strategy",
+        "description": "Momentum strategy for trading ETFs",
+        "config_class": ETFMomentumConfig,
+    }
 }
 
 
@@ -364,7 +369,7 @@ def main():
     parser.add_argument(
         "--universe",
         type=str,
-        choices=["nifty50", "nifty100", "nifty200"],
+        choices=["nifty50", "nifty100", "nifty200", "etf"],
         default="nifty50",
         help="Nifty universe to use for stock selection (default: nifty50)",
     )

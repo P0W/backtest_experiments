@@ -3,6 +3,7 @@ Strategies package for trading strategies
 """
 
 from .base_strategy import BaseStrategy, StrategyConfig
+from .etf_momentum_strategy import ETFMomentumConfig, ETFMomentumStrategy
 from .mean_reversion_strategy import (PortfolioMeanReversionConfig,
                                       PortfolioMeanReversionStrategy)
 from .momentum_strategy import AdaptiveMomentumConfig, MomentumTrendStrategy
@@ -15,6 +16,8 @@ from .statistical_trend_strategy import (StatisticalTrendConfig,
 __all__ = [
     "BaseStrategy",
     "StrategyConfig",
+    "ETFMomentumStrategy",
+    "ETFMomentumConfig",
     "MomentumTrendStrategy",
     "AdaptiveMomentumConfig",
     "PairsStrategy",
