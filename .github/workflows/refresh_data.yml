@@ -25,7 +25,7 @@ jobs:
           uv pip sync pyproject.toml
 
       - name: Run data refresh script
-        run: python refresh_data.py
+        run: uv run refresh_data.py
 
       - name: Commit and push if data changed
         run: |
