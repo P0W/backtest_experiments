@@ -59,7 +59,7 @@ jobs:
           if ! git diff --staged --quiet; then
             # Determine what changed
             DATA_CHANGED=$(git diff --staged --name-only | grep -E '^data_parquet/' || echo "")
-            CODE_CHANGED=$(git diff --staged --name-only | grep -E '\.(py|toml|yml|yaml) || echo "")
+            CODE_CHANGED=$(git diff --staged --name-only | grep -E '\.(py|toml|yml|yaml)$' || echo "")
             
             COMMIT_MSG="Automated daily update - $(date -u)"
             if [ -n "$DATA_CHANGED" ] && [ -n "$CODE_CHANGED" ]; then
