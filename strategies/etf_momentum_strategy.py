@@ -130,7 +130,6 @@ class ETFMomentumStrategy(BaseStrategy):
         """Calculate momentum scores for all ETFs"""
         momentum_scores = {}
         total_etfs = len(self.datas)
-        valid_etfs = 0
         
         for d in self.datas:
             etf_name = d._name
@@ -237,8 +236,6 @@ class ETFMomentumStrategy(BaseStrategy):
                 }
         
         # Exit positions not in target portfolio
-        exit_threshold = self.p.portfolio_size * self.p.exit_rank_buffer
-        
         for etf_name, pos_info in current_positions.items():
             if etf_name not in target_etfs:
                 self.log(f"Exiting position in {etf_name}")
