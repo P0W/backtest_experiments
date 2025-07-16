@@ -7,10 +7,11 @@ deviates significantly from its historical mean and trades on the expectation th
 will revert to the mean.
 """
 
+from typing import Any, Dict, List
+
 import backtrader as bt
 import numpy as np
 import statsmodels.api as sm
-from typing import Dict, Any, List
 
 from .base_strategy import BaseStrategy, StrategyConfig
 

@@ -8,10 +8,11 @@ and follow trends in stock prices. This strategy combines z-score mean reversion
 with momentum filters using EMA and ADX indicators.
 """
 
+from datetime import time
+from typing import Any, Dict, List
+
 import backtrader as bt
 import numpy as np
-from typing import Dict, Any, List
-from datetime import time
 
 from .base_strategy import BaseStrategy, StrategyConfig
 

@@ -6,8 +6,9 @@ This strategy looks for stocks that have deviated significantly from their histo
 and trades on the expectation that prices will revert to the mean.
 """
 
+from typing import Any, Dict, List
+
 import backtrader as bt
-from typing import Dict, Any, List
 
 from .base_strategy import BaseStrategy, StrategyConfig
 

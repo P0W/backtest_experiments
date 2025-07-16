@@ -8,9 +8,10 @@ A simplified momentum-based buy-and-hold strategy that:
 4. Implements smart position management with loser exit rules
 """
 
-import backtrader as bt
 from datetime import time
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+import backtrader as bt
 
 from .base_strategy import BaseStrategy, StrategyConfig
 

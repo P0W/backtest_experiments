@@ -5,10 +5,11 @@ This module provides the abstract base classes that all trading strategies must 
 It defines the interface for strategy configuration and ensures consistency across all strategies.
 """
 
-import backtrader as bt
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
+import backtrader as bt
 
 
 @dataclass

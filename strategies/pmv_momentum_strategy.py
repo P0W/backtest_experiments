@@ -10,9 +10,10 @@ This strategy identifies momentum using a combination of price action, volume,
 technical indicators like RSI, and comparative metrics like VWAP.
 """
 
+from typing import Any, Dict, List
+
 import backtrader as bt
 import numpy as np
-from typing import Dict, Any, List
 
 from .base_strategy import BaseStrategy, StrategyConfig
 

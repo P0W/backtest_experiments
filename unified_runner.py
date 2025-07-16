@@ -5,32 +5,21 @@ This script provides a unified interface to run any trading strategy from the st
 Users can easily add new strategies by inheriting from BaseStrategy and StrategyConfig classes.
 """
 
-import sys
-import os
-from datetime import datetime, timedelta
 import argparse
+import os
+import sys
+from datetime import datetime, timedelta
 
 # Add strategies folder to path
 sys.path.append(os.path.join(os.path.dirname(__file__), "strategies"))
 
-from strategies import (
-    AdaptiveMomentumConfig,
-    PairsConfig,
-    PortfolioMeanReversionConfig,
-    StatisticalTrendConfig,
-    PMVMomentumConfig,
-    NiftyShopConfig,
-)
 from experiment_framework import UnifiedExperimentFramework
-from nifty_universe import (
-    get_nifty_universe,
-    get_available_universes,
-    get_universe_info,
-    get_sector_stocks,
-    get_available_sectors,
-    get_sector_info,
-)
-
+from nifty_universe import (get_available_sectors, get_available_universes,
+                            get_nifty_universe, get_sector_info,
+                            get_sector_stocks, get_universe_info)
+from strategies import (AdaptiveMomentumConfig, NiftyShopConfig, PairsConfig,
+                        PMVMomentumConfig, PortfolioMeanReversionConfig,
+                        StatisticalTrendConfig)
 
 # Registry of available strategies
 STRATEGY_REGISTRY = {

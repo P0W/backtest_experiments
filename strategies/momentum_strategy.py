@@ -6,13 +6,14 @@ technical indicators like moving averages, ATR, and momentum calculations. The s
 dynamically selects the top-performing stocks and rebalances the portfolio periodically.
 """
 
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
+
 import backtrader as bt
 import requests
-from datetime import datetime, timedelta
-from typing import Dict, Any, List
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-import time
 
 from .base_strategy import BaseStrategy, StrategyConfig
 
