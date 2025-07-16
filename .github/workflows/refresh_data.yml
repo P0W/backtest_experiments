@@ -55,26 +55,17 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add .
-          # Check if there are changes to commit
           if ! git diff --staged --quiet; then
-            # Determine what changed
             DATA_CHANGED=$(git diff --staged --name-only | grep -E '^data_parquet/' || echo "")
-            CODE_CHANGED=$(git diff --staged --name-only | grep -E '\.(py|toml|yml|yaml)$' || echo "")
+            CODE_CHANGED=$(git diff --staged --name-only | grep -E '\.(py|toml|yml|yaml) || echo "")
             
             COMMIT_MSG="Automated daily update - $(date -u)"
             if [ -n "$DATA_CHANGED" ] && [ -n "$CODE_CHANGED" ]; then
-              COMMIT_MSG="$COMMIT_MSG
-
-- Updated trading data
-- Applied code formatting (black, isort, ruff)"
+              COMMIT_MSG="$COMMIT_MSG - Updated trading data and applied code formatting"
             elif [ -n "$DATA_CHANGED" ]; then
-              COMMIT_MSG="$COMMIT_MSG
-
-- Updated trading data"
+              COMMIT_MSG="$COMMIT_MSG - Updated trading data"
             elif [ -n "$CODE_CHANGED" ]; then
-              COMMIT_MSG="$COMMIT_MSG
-
-- Applied code formatting (black, isort, ruff)"
+              COMMIT_MSG="$COMMIT_MSG - Applied code formatting"
             fi
             
             git commit -m "$COMMIT_MSG"
