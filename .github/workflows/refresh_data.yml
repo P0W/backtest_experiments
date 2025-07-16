@@ -34,22 +34,51 @@ jobs:
           uv run refresh_data.py
           echo "Data refresh completed"
 
+      - name: Run code formatting and linting
+        run: |
+          echo "Running black formatter..."
+          uv run black . --check --diff || uv run black .
+          echo "Running isort..."
+          uv run isort . --check-only --diff || uv run isort .
+          echo "Running ruff linter..."
+          uv run ruff check . --fix
+
       - name: Check for changes
         run: |
           echo "Files in data_parquet/:"
           ls -la data_parquet/ || echo "data_parquet/ directory not found"
-          echo "Git status:"
+          echo "Git status after data refresh and formatting:"
           git status
 
-      - name: Commit and push if data changed
+      - name: Commit and push if changes exist
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data_parquet/
+          git add .
           # Check if there are changes to commit
           if ! git diff --staged --quiet; then
-            git commit -m "Automated daily data refresh - $(date -u)"
+            # Determine what changed
+            DATA_CHANGED=$(git diff --staged --name-only | grep -E '^data_parquet/' || echo "")
+            CODE_CHANGED=$(git diff --staged --name-only | grep -E '\.(py|toml|yml|yaml) || echo "")
+            
+            COMMIT_MSG="Automated daily update - $(date -u)"
+            if [ -n "$DATA_CHANGED" ] && [ -n "$CODE_CHANGED" ]; then
+              COMMIT_MSG="$COMMIT_MSG
+
+- Updated trading data
+- Applied code formatting (black, isort, ruff)"
+            elif [ -n "$DATA_CHANGED" ]; then
+              COMMIT_MSG="$COMMIT_MSG
+
+- Updated trading data"
+            elif [ -n "$CODE_CHANGED" ]; then
+              COMMIT_MSG="$COMMIT_MSG
+
+- Applied code formatting (black, isort, ruff)"
+            fi
+            
+            git commit -m "$COMMIT_MSG"
             git push origin main
           else
-            echo "No data changes to commit."
+            echo "No changes to commit."
           fi
