@@ -268,7 +268,12 @@ NIFTY_100 = NIFTY_50 + NIFTY_100_ADDITIONAL
 NIFTY_200 = NIFTY_100 + NIFTY_200_ADDITIONAL
 
 # Mapping for easy access
-NIFTY_UNIVERSES = {"nifty50": NIFTY_50, "nifty100": NIFTY_100, "nifty200": NIFTY_200, "etf": ETF_UNIVERSE}
+NIFTY_UNIVERSES = {
+    "nifty50": NIFTY_50,
+    "nifty100": NIFTY_100,
+    "nifty200": NIFTY_200,
+    "etf": ETF_UNIVERSE,
+}
 
 
 def get_nifty_universe(universe_name):

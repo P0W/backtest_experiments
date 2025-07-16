@@ -17,9 +17,9 @@ from experiment_framework import UnifiedExperimentFramework
 from nifty_universe import (get_available_sectors, get_available_universes,
                             get_nifty_universe, get_sector_info,
                             get_sector_stocks, get_universe_info)
-from strategies import (AdaptiveMomentumConfig, NiftyShopConfig, PairsConfig,
-                        PMVMomentumConfig, PortfolioMeanReversionConfig,
-                        StatisticalTrendConfig, ETFMomentumConfig)
+from strategies import (AdaptiveMomentumConfig, ETFMomentumConfig,
+                        NiftyShopConfig, PairsConfig, PMVMomentumConfig,
+                        PortfolioMeanReversionConfig, StatisticalTrendConfig)
 
 # Registry of available strategies
 STRATEGY_REGISTRY = {
@@ -57,7 +57,7 @@ STRATEGY_REGISTRY = {
         "name": "ETF Momentum Strategy",
         "description": "Momentum strategy for trading ETFs",
         "config_class": ETFMomentumConfig,
-    }
+    },
 }
 
 
