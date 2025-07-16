@@ -1,3 +1,5 @@
+[![Daily Data Refresh](https://github.com/P0W/backtest_experiments/actions/workflows/refresh_data.yml/badge.svg)](https://github.com/P0W/backtest_experiments/actions/workflows/refresh_data.yml)
+
 # Trading Strategy Experiment Framework
 
 A unified framework for testing and optimizing different trading strategies using systematic parameter experiments.
