@@ -10,7 +10,6 @@ with momentum filters using EMA and ADX indicators.
 
 import backtrader as bt
 import numpy as np
-import pandas as pd
 from typing import Dict, Any, List
 from datetime import time
 

@@ -11,7 +11,6 @@ import numpy as np
 from datetime import datetime, timedelta
 import json
 import os
-import sys
 import time
 import logging
 import traceback
@@ -21,7 +20,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tabulate import tabulate
 import warnings
-from typing import Dict, Any, List, Optional, Union, Type
+from typing import Dict, Any, List, Optional
 
 import backtrader as bt
 from utils import MarketDataLoader, IndianBrokerageCommission
@@ -649,7 +648,7 @@ class UnifiedExperimentFramework:
 
         # Top 10 results with enhanced metrics
         top_10 = df.nlargest(10, "composite_score")
-        print(f"\n📈 TOP 10 RESULTS")
+        print("\n📈 TOP 10 RESULTS")
         display_cols = [
             "total_return",
             "annualized_return",
@@ -672,7 +671,7 @@ class UnifiedExperimentFramework:
         )
 
         # Statistics with enhanced metrics
-        print(f"\n📊 PERFORMANCE STATISTICS")
+        print("\n📊 PERFORMANCE STATISTICS")
         stats_data = [
             ["Metric", "Mean", "Std", "Min", "Max"],
             [
@@ -1405,7 +1404,7 @@ class UnifiedExperimentFramework:
 
         # Add performance metrics at the bottom
         params_text += "\n" + "─" * 80 + "\n"
-        params_text += f"📊 PERFORMANCE SUMMARY:\n"
+        params_text += "📊 PERFORMANCE SUMMARY:\n"
         params_text += f"Total Return: {result.total_return:.2f}%  |  "
         params_text += f"Sharpe Ratio: {result.sharpe_ratio:.3f}  |  "
         params_text += f"Max Drawdown: {result.max_drawdown:.2f}%  |  "
@@ -1506,7 +1505,7 @@ class UnifiedExperimentFramework:
             )
 
             # Print summary
-            print(f"\n✅ Portfolio analysis completed!")
+            print("\n✅ Portfolio analysis completed!")
             print(f"📈 Total Return: {result.total_return:.2f}%")
             print(f"⚖️ Sharpe Ratio: {result.sharpe_ratio:.3f}")
             print(f"📉 Max Drawdown: {result.max_drawdown:.2f}%")

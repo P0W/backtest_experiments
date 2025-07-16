@@ -4,7 +4,6 @@ Market Data Utilities for Nifty Trading Strategy
 Fast, smart market data loader with intelligent caching and parallel processing.
 """
 
-import os
 import pandas as pd
 import yfinance as yf
 import backtrader as bt

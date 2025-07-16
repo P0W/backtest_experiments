@@ -14,21 +14,14 @@ import argparse
 sys.path.append(os.path.join(os.path.dirname(__file__), "strategies"))
 
 from strategies import (
-    MomentumTrendStrategy,
     AdaptiveMomentumConfig,
-    PairsStrategy,
     PairsConfig,
-    PortfolioMeanReversionStrategy,
     PortfolioMeanReversionConfig,
-    StatisticalTrendStrategy,
     StatisticalTrendConfig,
-    PMVMomentumStrategy,
     PMVMomentumConfig,
-    NiftyShopStrategy,
     NiftyShopConfig,
 )
 from experiment_framework import UnifiedExperimentFramework
-from utils import MarketDataLoader, setup_logger, IndianBrokerageCommission
 from nifty_universe import (
     get_nifty_universe,
     get_available_universes,
@@ -125,20 +118,20 @@ def list_universes():
     for universe, count in universe_info.items():
         print(f"📈 {universe.upper()}: {count} stocks")
 
-    print(f"\n🏢 Available Sectors:")
+    print("\n🏢 Available Sectors:")
     print("=" * 50)
 
     sector_info = get_sector_info()
     for sector, count in sector_info.items():
         print(f"🔍 {sector.upper()}: {count} stocks")
 
-    print(f"\n💡 Usage examples:")
-    print(f"   --universe nifty50     (Use Nifty 50 stocks)")
-    print(f"   --universe nifty100    (Use Nifty 100 stocks)")
-    print(f"   --universe nifty200    (Use Nifty 200 stocks)")
-    print(f"   --sector banking       (Use banking sector stocks)")
-    print(f"   --sector it            (Use IT sector stocks)")
-    print(f"   --symbols HDFCBANK.NS ICICIBANK.NS  (Custom stock selection)")
+    print("\n💡 Usage examples:")
+    print("   --universe nifty50     (Use Nifty 50 stocks)")
+    print("   --universe nifty100    (Use Nifty 100 stocks)")
+    print("   --universe nifty200    (Use Nifty 200 stocks)")
+    print("   --sector banking       (Use banking sector stocks)")
+    print("   --sector it            (Use IT sector stocks)")
+    print("   --symbols HDFCBANK.NS ICICIBANK.NS  (Custom stock selection)")
 
 
 def run_strategy_backtest(
@@ -217,7 +210,7 @@ def run_strategy_backtest(
     )
 
     if result:
-        print(f"\n✅ Backtest completed successfully!")
+        print("\n✅ Backtest completed successfully!")
         print(f"📈 Total Return: {result.total_return:.2f}%")
         print(f"⚖️ Sharpe Ratio: {result.sharpe_ratio:.3f}")
         print(f"📉 Max Drawdown: {result.max_drawdown:.2f}%")
@@ -226,7 +219,7 @@ def run_strategy_backtest(
         # Generate comprehensive visualization dashboard
         try:
             framework.create_portfolio_dashboard(result, symbols, start_date, end_date)
-            print(f"📊 Portfolio performance dashboard generated successfully!")
+            print("📊 Portfolio performance dashboard generated successfully!")
         except Exception as e:
             print(f"⚠️ Could not generate portfolio dashboard: {e}")
     else:
@@ -350,7 +343,7 @@ def run_strategy_optimization(
             framework.create_portfolio_dashboard(
                 best_result, symbols, start_date, end_date
             )
-            print(f"📊 Best result portfolio dashboard generated!")
+            print("📊 Best result portfolio dashboard generated!")
         except Exception as e:
             print(f"⚠️ Could not generate portfolio dashboard: {e}")
     else:
@@ -591,7 +584,7 @@ if __name__ == "__main__":
                 if not sector:
                     sector = "banking"
                 if sector not in get_available_sectors():
-                    print(f"❌ Invalid sector. Using default: banking")
+                    print("❌ Invalid sector. Using default: banking")
                     sector = "banking"
             elif selection_type == "universe":
                 universe = (
@@ -602,7 +595,7 @@ if __name__ == "__main__":
                 if not universe:
                     universe = "nifty50"
                 if universe not in get_available_universes():
-                    print(f"❌ Invalid universe. Using default: nifty50")
+                    print("❌ Invalid universe. Using default: nifty50")
                     universe = "nifty50"
 
             optimize = input("🔬 Run optimization? (y/N): ").strip().lower() == "y"

@@ -513,7 +513,7 @@ if __name__ == "__main__":
 
     print(f"\n📈 Available universes: {', '.join(get_available_universes())}")
 
-    print(f"\n🏢 Available Sectors:")
+    print("\n🏢 Available Sectors:")
     print("=" * 40)
     for sector, count in get_sector_info().items():
         print(f"{sector.upper()}: {count} stocks")

@@ -7,8 +7,6 @@ and trades on the expectation that prices will revert to the mean.
 """
 
 import backtrader as bt
-import numpy as np
-import pandas as pd
 from typing import Dict, Any, List
 
 from .base_strategy import BaseStrategy, StrategyConfig

@@ -9,7 +9,6 @@ and uses the MarketDataLoader to efficiently download only the latest incrementa
 """
 
 import logging
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 

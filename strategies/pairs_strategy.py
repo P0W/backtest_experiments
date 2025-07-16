@@ -8,12 +8,8 @@ will revert to the mean.
 """
 
 import backtrader as bt
-import pandas as pd
 import numpy as np
-from scipy.stats import linregress
 import statsmodels.api as sm
-from statsmodels.tsa.stattools import adfuller
-import logging
 from typing import Dict, Any, List
 
 from .base_strategy import BaseStrategy, StrategyConfig
@@ -99,7 +95,7 @@ class PairsStrategy(BaseStrategy):
             beta = max(0.1, min(beta, 10.0))
 
             return beta
-        except Exception as e:
+        except Exception:
             return 1.0
 
     def calculate_correlation(self, returns0, returns1):
@@ -110,7 +106,7 @@ class PairsStrategy(BaseStrategy):
         try:
             corr = np.corrcoef(returns0, returns1)[0, 1]
             return corr if not np.isnan(corr) else 0.0
-        except:
+        except (ValueError, IndexError, TypeError):
             return 0.0
 
     def get_spread_data(self):

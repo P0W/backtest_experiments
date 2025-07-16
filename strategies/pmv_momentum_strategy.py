@@ -12,8 +12,7 @@ technical indicators like RSI, and comparative metrics like VWAP.
 
 import backtrader as bt
 import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 from .base_strategy import BaseStrategy, StrategyConfig
 

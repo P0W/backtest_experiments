@@ -7,10 +7,6 @@ dynamically selects the top-performing stocks and rebalances the portfolio perio
 """
 
 import backtrader as bt
-import os
-import json
-import logging
-import numpy as np
 import requests
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
@@ -621,7 +617,7 @@ def filter_stocks_with_data(
                 # Small delay to show progress updates
                 time.sleep(0.01)
 
-    print(f"\n📈 Results Summary:")
+    print("\n📈 Results Summary:")
     print(f"  ✅ Available stocks: {len(available_stocks)}")
     print(f"  ❌ Failed stocks: {len(failed_stocks)}")
     print(f"  📊 Success rate: {len(available_stocks)/len(test_symbols)*100:.1f}%")
@@ -634,7 +630,7 @@ def filter_stocks_with_data(
 
     # Show top performing stocks
     if available_stocks:
-        print(f"\n🏆 Top available stocks (showing first 10):")
+        print("\n🏆 Top available stocks (showing first 10):")
         for i, stock in enumerate(available_stocks[:10], 1):
             print(f"  {i:2d}. {stock}")
 

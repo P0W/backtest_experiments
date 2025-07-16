@@ -9,9 +9,7 @@ A simplified momentum-based buy-and-hold strategy that:
 """
 
 import backtrader as bt
-import logging
-from datetime import datetime, time
-from collections import defaultdict
+from datetime import time
 from typing import Dict, Any, List
 
 from .base_strategy import BaseStrategy, StrategyConfig

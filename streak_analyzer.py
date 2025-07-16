@@ -6,7 +6,6 @@ and other detailed trading statistics.
 """
 
 import backtrader as bt
-from collections import deque
 
 
 class StreakAnalyzer(bt.Analyzer):
