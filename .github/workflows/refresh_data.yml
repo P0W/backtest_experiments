@@ -6,15 +6,18 @@ on:
     - cron: '0 0 * * *'
   workflow_dispatch: # Allows manual triggering
 
+permissions:
+  contents: write  # Required for pushing changes
+
 jobs:
   refresh-data:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
@@ -22,10 +25,21 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           uv pip sync pyproject.toml
 
       - name: Run data refresh script
-        run: uv run refresh_data.py
+        run: |
+          echo "Starting data refresh..."
+          uv run refresh_data.py
+          echo "Data refresh completed"
+
+      - name: Check for changes
+        run: |
+          echo "Files in data_parquet/:"
+          ls -la data_parquet/ || echo "data_parquet/ directory not found"
+          echo "Git status:"
+          git status
 
       - name: Commit and push if data changed
         run: |
@@ -34,8 +48,8 @@ jobs:
           git add data_parquet/
           # Check if there are changes to commit
           if ! git diff --staged --quiet; then
-            git commit -m "Automated daily data refresh"
-            git push
+            git commit -m "Automated daily data refresh - $(date -u)"
+            git push origin main
           else
             echo "No data changes to commit."
           fi
