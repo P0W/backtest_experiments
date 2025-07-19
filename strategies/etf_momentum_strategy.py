@@ -89,39 +89,47 @@ class ETFMomentumStrategy(BaseStrategy):
         """
         current_date = self.datas[0].datetime.date(0)
         current_value = self.broker.getvalue()
-        
+
         # Track portfolio performance even during prenext
         self.portfolio_values.append(current_value)
         self.dates.append(current_date)
-        
+
         # Check if we have enough ETFs with sufficient data to form a portfolio
         available_etfs = []
-        
+
         for d in self.datas:
             etf_name = d._name
             indicators = self.indicators.get(etf_name, {})
-            
+
             # Check if we have at least short-term momentum data available
             roc_short = indicators.get("roc_short")
             sma = indicators.get("sma")
-            
+
             if roc_short is not None and sma is not None:
                 try:
                     # Check if indicators have valid data (not NaN)
-                    if (len(roc_short) > 0 and len(sma) > 0 and 
-                        not np.isnan(roc_short[0]) and not np.isnan(sma[0])):
+                    if (
+                        len(roc_short) > 0
+                        and len(sma) > 0
+                        and not np.isnan(roc_short[0])
+                        and not np.isnan(sma[0])
+                    ):
                         available_etfs.append(etf_name)
                 except (IndexError, TypeError):
                     continue
-        
+
         self.log(f"Prenext: {len(available_etfs)} ETFs with sufficient data available")
-        
+
         # If we have enough ETFs to form a portfolio, execute strategy
         if len(available_etfs) >= self.p.portfolio_size:
-            self.log(f"Prenext: Sufficient ETFs available ({len(available_etfs)} >= {self.p.portfolio_size})")
+            self.log(
+                f"Prenext: Sufficient ETFs available ({len(available_etfs)} >= {self.p.portfolio_size})"
+            )
             self.execute_strategy()
         else:
-            self.log(f"Prenext: Waiting for more data ({len(available_etfs)} < {self.p.portfolio_size})")
+            self.log(
+                f"Prenext: Waiting for more data ({len(available_etfs)} < {self.p.portfolio_size})"
+            )
 
     def execute_strategy(self):
         """Execute ETF momentum strategy logic"""
@@ -268,7 +276,8 @@ class ETFMomentumStrategy(BaseStrategy):
                     "trend_filter": trend_filter,
                     "volume": current_volume,
                     "avg_volume": avg_volume,
-                    "has_long_term_data": long_momentum is not None and long_momentum != 0.0,
+                    "has_long_term_data": long_momentum is not None
+                    and long_momentum != 0.0,
                 }
 
                 self.log(
