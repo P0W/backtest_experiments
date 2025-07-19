@@ -37,6 +37,7 @@ class ETFMomentumStrategy(BaseStrategy):
         ),  # Exit multiplier (exit if rank > portfolio_size * buffer)
         ("min_momentum_threshold", 0.0),  # Minimum momentum to consider
         ("volume_threshold", 100000),  # Minimum daily volume threshold
+        ("printlog", False),  # Whether to print log messages
     )
 
     def __init__(self):
@@ -80,6 +81,47 @@ class ETFMomentumStrategy(BaseStrategy):
                 }
 
         self.log(f"Indicators initialized for {len(self.indicators)} ETFs")
+
+    def prenext(self):
+        """
+        Called before next() when we don't have enough data for all indicators
+        but can still achieve portfolio_size with available ETFs
+        """
+        current_date = self.datas[0].datetime.date(0)
+        current_value = self.broker.getvalue()
+        
+        # Track portfolio performance even during prenext
+        self.portfolio_values.append(current_value)
+        self.dates.append(current_date)
+        
+        # Check if we have enough ETFs with sufficient data to form a portfolio
+        available_etfs = []
+        
+        for d in self.datas:
+            etf_name = d._name
+            indicators = self.indicators.get(etf_name, {})
+            
+            # Check if we have at least short-term momentum data available
+            roc_short = indicators.get("roc_short")
+            sma = indicators.get("sma")
+            
+            if roc_short is not None and sma is not None:
+                try:
+                    # Check if indicators have valid data (not NaN)
+                    if (len(roc_short) > 0 and len(sma) > 0 and 
+                        not np.isnan(roc_short[0]) and not np.isnan(sma[0])):
+                        available_etfs.append(etf_name)
+                except (IndexError, TypeError):
+                    continue
+        
+        self.log(f"Prenext: {len(available_etfs)} ETFs with sufficient data available")
+        
+        # If we have enough ETFs to form a portfolio, execute strategy
+        if len(available_etfs) >= self.p.portfolio_size:
+            self.log(f"Prenext: Sufficient ETFs available ({len(available_etfs)} >= {self.p.portfolio_size})")
+            self.execute_strategy()
+        else:
+            self.log(f"Prenext: Waiting for more data ({len(available_etfs)} < {self.p.portfolio_size})")
 
     def execute_strategy(self):
         """Execute ETF momentum strategy logic"""
@@ -158,15 +200,14 @@ class ETFMomentumStrategy(BaseStrategy):
                 sma = indicators.get("sma")
                 volume_sma = indicators.get("volume_sma")
 
-                # Check if indicators exist
-                if roc_long is None or roc_short is None or sma is None:
-                    self.log(f"{etf_name}: Indicators not initialized")
+                # Check if minimum required indicators exist (short-term momentum and SMA)
+                if roc_short is None or sma is None:
+                    self.log(f"{etf_name}: Essential indicators not initialized")
                     continue
 
                 # Get current values and check if they're valid
                 try:
                     current_price = d.close[0]
-                    long_momentum = roc_long[0] / 100.0  # Convert percentage to decimal
                     short_momentum = roc_short[0] / 100.0
                     sma_value = sma[0]
                     current_volume = d.volume[0] if hasattr(d, "volume") else 1000000
@@ -176,10 +217,19 @@ class ETFMomentumStrategy(BaseStrategy):
                         else current_volume
                     )
 
-                    # Skip if values are NaN or invalid (indicates insufficient data)
+                    # Try to get long-term momentum, but don't fail if not available
+                    long_momentum = None
+                    if roc_long is not None:
+                        try:
+                            long_momentum_val = roc_long[0] / 100.0
+                            if not np.isnan(long_momentum_val):
+                                long_momentum = long_momentum_val
+                        except (IndexError, TypeError):
+                            pass
+
+                    # Skip if essential values are NaN or invalid
                     if (
-                        np.isnan(long_momentum)
-                        or np.isnan(short_momentum)
+                        np.isnan(short_momentum)
                         or np.isnan(current_price)
                         or np.isnan(sma_value)
                     ):
@@ -190,8 +240,21 @@ class ETFMomentumStrategy(BaseStrategy):
                     continue
 
                 # Calculate composite momentum score
-                # Weight long-term more heavily, but consider short-term momentum
-                momentum_score = 0.7 * long_momentum + 0.3 * short_momentum
+                if long_momentum is not None:
+                    # Full momentum calculation when long-term data is available
+                    momentum_score = 0.7 * long_momentum + 0.3 * short_momentum
+                    self.log(
+                        f"{etf_name}: Full momentum calculation - "
+                        f"long={long_momentum:.4f}, short={short_momentum:.4f}"
+                    )
+                else:
+                    # Use only short-term momentum when long-term isn't available yet
+                    momentum_score = short_momentum
+                    long_momentum = 0.0  # Set to 0 for logging consistency
+                    self.log(
+                        f"{etf_name}: Short-term only momentum calculation - "
+                        f"short={short_momentum:.4f} (long-term data not ready)"
+                    )
 
                 # Apply trend filter (price above moving average)
                 trend_filter = current_price > sma_value
@@ -205,11 +268,11 @@ class ETFMomentumStrategy(BaseStrategy):
                     "trend_filter": trend_filter,
                     "volume": current_volume,
                     "avg_volume": avg_volume,
+                    "has_long_term_data": long_momentum is not None and long_momentum != 0.0,
                 }
 
                 self.log(
                     f"{etf_name}: momentum={momentum_score:.4f}, "
-                    f"long={long_momentum:.4f}, short={short_momentum:.4f}, "
                     f"trend_ok={trend_filter}"
                 )
 
@@ -319,14 +382,14 @@ class ETFMomentumConfig(StrategyConfig):
         Define the parameter grid for ETF momentum strategy experiments
         """
         return {
-            "portfolio_size": [3, 5, 7, 10],
+            "portfolio_size": [5],
             "rebalance_frequency": [20, 30, 45, 60],
-            "long_term_period": [180, 252, 365],
+            "long_term_period": [100, 180, 200],
             "short_term_period": [30, 60, 90],
             "moving_avg_period": [20, 50, 100],
-            "exit_rank_buffer": [1.5, 2.0, 2.5, 3.0],
-            "min_momentum_threshold": [-0.05, 0.0, 0.05, 0.10],
-            "volume_threshold": [50000, 100000, 200000],
+            "exit_rank_buffer": [1.5, 2.0, 2.5],
+            "min_momentum_threshold": [0.0, 0.05, 0.10],
+            "volume_threshold": [100000, 200000],
         }
 
     def get_intraday_parameter_grid(self) -> Dict[str, List[Any]]:
@@ -350,13 +413,13 @@ class ETFMomentumConfig(StrategyConfig):
         """
         return {
             "portfolio_size": 5,
-            "rebalance_frequency": 15,  # Reduced from 30 for more frequent rebalancing
-            "long_term_period": 90,  # Reduced from 126 for earlier start
-            "short_term_period": 20,  # Reduced from 30
+            "rebalance_frequency": 30,  # Reduced from 30 for more frequent rebalancing
+            "long_term_period": 200,  # Reduced from 126 for earlier start
+            "short_term_period": 90,  # Reduced from 30
             "moving_avg_period": 20,  # Reduced from 25
-            "exit_rank_buffer": 2.0,
+            "exit_rank_buffer": 1.5,
             "min_momentum_threshold": 0.0,
-            "volume_threshold": 100000,
+            "volume_threshold": 200000,
         }
 
     def validate_params(self, params: Dict[str, Any]) -> bool:

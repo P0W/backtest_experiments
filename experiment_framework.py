@@ -1103,11 +1103,12 @@ class UnifiedExperimentFramework:
 
         # Add simple benchmark lines
         days_total = len(portfolio_df)
+        years_total = days_total / 365.25
         benchmark_8 = [
-            (8 / 365 * i / days_total * days_total) for i in range(days_total)
+            (8 * i / days_total * years_total) for i in range(days_total)
         ]
         benchmark_12 = [
-            (12 / 365 * i / days_total * days_total) for i in range(days_total)
+            (12 * i / days_total * years_total) for i in range(days_total)
         ]
 
         ax6.plot(
@@ -1136,9 +1137,15 @@ class UnifiedExperimentFramework:
 
         # 7. Key Performance Metrics (Third Row Left)
         ax7 = plt.subplot(5, 3, 7)
+        
+        # Calculate proper annualized return using CAGR formula
+        days_in_period = (end_date - start_date).days
+        years_in_period = days_in_period / 365.25
+        annualized_return_cagr = (((1 + result.total_return/100) ** (1/years_in_period)) - 1) * 100 if years_in_period > 0 else result.total_return
+        
         metrics_data = {
             "Total Return": f"{result.total_return:.2f}%",
-            "Annualized Return": f"{(result.total_return * 365 / (end_date - start_date).days):.2f}%",
+            "Annualized Return": f"{annualized_return_cagr:.2f}%",
             "Sharpe Ratio": f"{result.sharpe_ratio:.3f}",
             "Max Drawdown": f"{result.max_drawdown:.2f}%",
             "Volatility": (
@@ -1179,7 +1186,8 @@ class UnifiedExperimentFramework:
         volatility = (
             returns_clean.std() * np.sqrt(252) * 100 if len(returns_clean) > 1 else 0
         )
-        annualized_return = result.total_return * 365 / (end_date - start_date).days
+        # Use the same CAGR calculation for consistency
+        annualized_return = annualized_return_cagr
 
         # Plot strategy point
         ax8.scatter(
@@ -1221,9 +1229,9 @@ class UnifiedExperimentFramework:
             Symbols: {len(symbols)}
             {', '.join(symbols[:5])}{'...' if len(symbols) > 5 else ''}
 
-            Initial Value: ₹{result.final_value - (result.total_return/100 * result.final_value):,.0f}
+            Initial Value: ₹{result.final_value / (1 + result.total_return/100):,.0f}
             Final Value: ₹{result.final_value:,.0f}
-            Profit/Loss: ₹{(result.total_return/100 * result.final_value):,.0f}
+            Profit/Loss: ₹{result.final_value - (result.final_value / (1 + result.total_return/100)):,.0f}
 
             Performance Rating: {'⭐' * min(5, max(1, int(result.sharpe_ratio + 2)))}
         """
@@ -1323,44 +1331,45 @@ class UnifiedExperimentFramework:
                 "Rolling Volatility (30-Day)", fontsize=14, fontweight="bold"
             )
 
-        # 12. Underwater Plot (Fourth Row Right)
+        # 12. Underwater Plot (Fourth Row Right) - Shows days underwater
         ax12 = plt.subplot(5, 3, 12)
+        
+        # Calculate underwater periods (days below previous peak)
+        is_underwater = portfolio_df['drawdown'] < -0.01  # More than 0.01% drawdown
+        portfolio_df['days_underwater'] = (
+            is_underwater.groupby((~is_underwater).cumsum()).cumcount() + 1
+        ) * is_underwater
+        
+        # Plot underwater duration
         ax12.fill_between(
-            portfolio_df.index, portfolio_df["drawdown"], 0, alpha=0.7, color="red"
+            portfolio_df.index, portfolio_df['days_underwater'], 0, 
+            alpha=0.7, color="blue", label="Days Underwater"
         )
         ax12.plot(
-            portfolio_df.index, portfolio_df["drawdown"], linewidth=1, color="darkred"
+            portfolio_df.index, portfolio_df['days_underwater'], 
+            linewidth=1, color="darkblue"
         )
         ax12.set_title(
-            "Underwater Plot (Drawdown Visualization)", fontsize=14, fontweight="bold"
+            "Underwater Plot (Days Below Peak)", fontsize=14, fontweight="bold"
         )
-        ax12.set_ylabel("Drawdown (%)")
+        ax12.set_ylabel("Days Underwater")
         ax12.grid(True, alpha=0.3)
-
-        # Add recovery periods
-        in_drawdown = portfolio_df["drawdown"] < -0.01  # More than 0.01% drawdown
-        if in_drawdown.any():
-            drawdown_periods = portfolio_df[in_drawdown].index
-            if len(drawdown_periods) > 0:
-                ax12.axvline(
-                    x=drawdown_periods[0],
-                    color="orange",
-                    linestyle=":",
-                    alpha=0.7,
-                    label="DD Start",
+        
+        # Add statistics
+        max_underwater = portfolio_df['days_underwater'].max()
+        avg_underwater = portfolio_df[portfolio_df['days_underwater'] > 0]['days_underwater'].mean()
+        
+        if max_underwater > 0:
+            ax12.axhline(
+                y=max_underwater, color="red", linestyle="--", alpha=0.7,
+                label=f"Max: {max_underwater:.0f} days"
+            )
+            if not pd.isna(avg_underwater):
+                ax12.axhline(
+                    y=avg_underwater, color="orange", linestyle="--", alpha=0.7,
+                    label=f"Avg: {avg_underwater:.0f} days"
                 )
-                if not in_drawdown.iloc[-1]:  # If recovered
-                    recovery_date = portfolio_df[
-                        ~in_drawdown & (portfolio_df.index > drawdown_periods[-1])
-                    ].index
-                    if len(recovery_date) > 0:
-                        ax12.axvline(
-                            x=recovery_date[0],
-                            color="green",
-                            linestyle=":",
-                            alpha=0.7,
-                            label="Recovery",
-                        )
+        
         ax12.legend()
 
         # 13. Optimal Parameters Panel (Fifth Row - Spanning all 3 columns)
