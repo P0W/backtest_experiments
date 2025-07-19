@@ -4,21 +4,6 @@
 
 A unified framework for testing and optimizing different trading strategies using systematic parameter experiments.
 
-## 🚀 Quick Start
-
-To run experiments for any strategy:
-
-```bash
-uv run run_experiments.py
-```
-
-This will launch an interactive menu where you can:
-1. Choose from available strategies
-2. Select appropriate assets/stocks
-3. Configure experiment parameters
-4. Run optimization experiments
-5. View results and visualizations
-
 ## �️ Dependencies
 
 This project uses `uv` as the package manager. Key dependencies:
@@ -102,12 +87,5 @@ experiment_results/
     └── ...
 ```
 
-##  Tips for Best Results
 
-1. **Start Small**: Begin with quick experiments to understand the strategy
-2. **Quality Data**: Ensure sufficient data history for meaningful results
-3. **Parameter Ranges**: Use realistic parameter ranges based on market characteristics
-4. **Validation**: Always validate results on out-of-sample data
-5. **Risk Management**: Consider transaction costs and slippage in real trading
-6. **Multiple Timeframes**: Test strategies across different market conditions
 
