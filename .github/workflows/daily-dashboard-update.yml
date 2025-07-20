@@ -171,10 +171,10 @@ jobs:
           commit_msg="$commit_msg
 
 Performance Summary:
-• Total Return: ${{ steps.backtest.outputs.total_return }}
-• Sharpe Ratio: ${{ steps.backtest.outputs.sharpe_ratio }}
-• Max Drawdown: ${{ steps.backtest.outputs.max_drawdown }}
-• Final Value: ${{ steps.backtest.outputs.final_value }}"
+- Total Return: ${{ steps.backtest.outputs.total_return }}
+- Sharpe Ratio: ${{ steps.backtest.outputs.sharpe_ratio }}
+- Max Drawdown: ${{ steps.backtest.outputs.max_drawdown }}
+- Final Value: ${{ steps.backtest.outputs.final_value }}"
         fi
         
         git commit -m "$commit_msg"
