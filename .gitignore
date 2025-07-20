@@ -45,7 +45,9 @@ data_cache/*.csv
 experiment_results/*/*.json
 experiment_results/*/*.csv
 experiment_results/*/*.log
-!experiment_results/*/*.png
+experiment_results/*/*_2*.png
+experiment_results/*/*_analysis_*.png
+!experiment_results/*/*_dashboard.png
 !experiment_results/.gitkeep
 
 # Temporary files

@@ -186,7 +186,7 @@ Performance Summary:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: backtest-log-${{ steps.params.outputs.strategy }}-$(date +'%Y%m%d')
+        name: backtest-log-${{ steps.params.outputs.strategy }}-${{ github.run_number }}
         path: backtest_output.log
         retention-days: 7
 
