@@ -214,7 +214,11 @@ def run_strategy_backtest(
         # Generate comprehensive visualization dashboard
         try:
             framework.create_portfolio_dashboard(
-                result, symbols, start_date, end_date, use_fixed_filename=use_fixed_filename
+                result,
+                symbols,
+                start_date,
+                end_date,
+                use_fixed_filename=use_fixed_filename,
             )
             print("📊 Portfolio performance dashboard generated successfully!")
         except Exception as e:
@@ -340,7 +344,11 @@ def run_strategy_optimization(
             best_result = results[0]
             # Create detailed portfolio dashboard for best result
             framework.create_portfolio_dashboard(
-                best_result, symbols, start_date, end_date, use_fixed_filename=use_fixed_filename
+                best_result,
+                symbols,
+                start_date,
+                end_date,
+                use_fixed_filename=use_fixed_filename,
             )
             print("📊 Best result portfolio dashboard generated!")
         except Exception as e:
@@ -626,7 +634,11 @@ if __name__ == "__main__":
                 )
             else:
                 run_strategy_backtest(
-                    strategy_key, universe=universe, sector=sector, printlog=False, use_fixed_filename=True
+                    strategy_key,
+                    universe=universe,
+                    sector=sector,
+                    printlog=False,
+                    use_fixed_filename=True,
                 )
         else:
             print("❌ Invalid strategy name")
