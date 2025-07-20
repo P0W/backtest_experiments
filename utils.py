@@ -27,60 +27,59 @@ class IndianBrokerageCommission(bt.CommInfoBase):
     • Plan: 0.03% or ₹20 per executed order, whichever is lower
     • Product: **Equity Delivery** (CNC, holding > 1 day)
     • Charges based on SEBI / NSE circulars effective 1-Jan-2024
-    
+
     Note: This calculates costs per side (buy/sell separately)
     """
 
     params = dict(
-        brokerage_pct=0.0003,        # 0.03%
-        brokerage_cap=20.0,          # ₹20 per side
-        stt_pct=0.001,               # 0.1% on SELL side only
-        txn_charge_pct=0.0000345,    # NSE: 0.00345% (corrected)
-        gst_rate=0.18,               # 18% on (brokerage + txn + SEBI)
-        sebi_pct=0.00000001,         # ₹1/crore = 0.000001% (corrected)
-        stamp_pct=0.00015,           # 0.015% on BUY side only
-        
+        brokerage_pct=0.0003,  # 0.03%
+        brokerage_cap=20.0,  # ₹20 per side
+        stt_pct=0.001,  # 0.1% on SELL side only
+        txn_charge_pct=0.0000345,  # NSE: 0.00345% (corrected)
+        gst_rate=0.18,  # 18% on (brokerage + txn + SEBI)
+        sebi_pct=0.00000001,  # ₹1/crore = 0.000001% (corrected)
+        stamp_pct=0.00015,  # 0.015% on BUY side only
         # Backtrader parameters
-        commission=0.0,              # Will be calculated dynamically
-        margin=None,                 # No margin for delivery
-        mult=1.0,                    # Multiplier
-        percabs=False,               # Commission not percentage of abs value
+        commission=0.0,  # Will be calculated dynamically
+        margin=None,  # No margin for delivery
+        mult=1.0,  # Multiplier
+        percabs=False,  # Commission not percentage of abs value
     )
 
     def getcommission(self, size, price):
         """
         Calculate total commission for the trade side.
-        
+
         Args:
             size: Number of shares (positive for buy, negative for sell)
             price: Price per share
-            
+
         Returns:
             Total commission including all charges
         """
         turnover = abs(size) * price
-        
+
         # Brokerage (capped)
         brokerage = min(turnover * self.p.brokerage_pct, self.p.brokerage_cap)
-        
+
         # Transaction charges (NSE)
         txn = turnover * self.p.txn_charge_pct
-        
+
         # SEBI charges
         sebi = turnover * self.p.sebi_pct
-        
+
         # GST on brokerage + transaction + SEBI charges
         gst = (brokerage + txn + sebi) * self.p.gst_rate
-        
+
         # STT (Securities Transaction Tax) - only on SELL
         stt = turnover * self.p.stt_pct if size < 0 else 0.0
-        
+
         # Stamp duty - only on BUY
         stamp = turnover * self.p.stamp_pct if size > 0 else 0.0
-        
+
         # Total commission
         total_commission = brokerage + txn + sebi + gst + stt + stamp
-        
+
         return total_commission
 
     def getoperationcost(self, size, price):
@@ -95,6 +94,7 @@ class IndianBrokerageCommission(bt.CommInfoBase):
         Backtrader internal method - delegates to getcommission.
         """
         return self.getcommission(size, price)
+
 
 def setup_logger():
     """Setup logging configuration for the application"""

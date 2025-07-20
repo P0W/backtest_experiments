@@ -732,7 +732,7 @@ class UnifiedExperimentFramework:
 
     def create_visualizations(self, use_fixed_filename: bool = True):
         """Create visualizations of experiment results
-        
+
         Args:
             use_fixed_filename: If True, uses a fixed filename that gets overwritten.
                                If False, uses timestamped filename (default behavior).
@@ -1555,7 +1555,11 @@ class UnifiedExperimentFramework:
         if result:
             # Generate comprehensive dashboard
             dashboard_file = self.create_portfolio_dashboard(
-                result, symbols, start_date, end_date, use_fixed_filename=use_fixed_filename
+                result,
+                symbols,
+                start_date,
+                end_date,
+                use_fixed_filename=use_fixed_filename,
             )
 
             # Print summary
