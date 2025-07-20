@@ -193,7 +193,7 @@ Performance Summary:
     - name: Create summary
       if: always()
       run: |
-        echo "## 📊 Daily ${{ steps.params.outputs.strategy | upper }} Dashboard Update" >> $GITHUB_STEP_SUMMARY
+        echo "## 📊 Daily $(echo '${{ steps.params.outputs.strategy }}' | tr '[:lower:]' '[:upper:]') Dashboard Update" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
         echo "- Date: $(date)" >> $GITHUB_STEP_SUMMARY
