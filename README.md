@@ -31,6 +31,12 @@ This project uses `uv` as the package manager. Key dependencies:
 - **Export**: JSON and CSV format results
 - **Optimal Parameters**: Best parameter combinations identified
 
+## 📊 Latest ETF Dashboard
+
+![ETF Momentum Dashboard](experiment_results/etfmomentum/etfmomentum_dashboard.png)
+
+*Dashboard is automatically updated daily at 12:00 PM IST after market close*
+
 ## 🤖 Automated Dashboard Updates
 
 The repository includes automated GitHub Actions workflows for daily updates:
