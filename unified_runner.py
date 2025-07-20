@@ -138,6 +138,7 @@ def run_strategy_backtest(
     universe="nifty50",
     sector=None,
     printlog=False,
+    use_fixed_filename=True,
 ):
     """Run a single strategy backtest"""
     if strategy_key not in STRATEGY_REGISTRY:
@@ -212,7 +213,9 @@ def run_strategy_backtest(
 
         # Generate comprehensive visualization dashboard
         try:
-            framework.create_portfolio_dashboard(result, symbols, start_date, end_date)
+            framework.create_portfolio_dashboard(
+                result, symbols, start_date, end_date, use_fixed_filename=use_fixed_filename
+            )
             print("📊 Portfolio performance dashboard generated successfully!")
         except Exception as e:
             print(f"⚠️ Could not generate portfolio dashboard: {e}")
@@ -232,6 +235,7 @@ def run_strategy_optimization(
     sector=None,
     max_stocks=None,
     printlog=False,
+    use_fixed_filename=True,
 ):
     """Run strategy parameter optimization"""
     if strategy_key not in STRATEGY_REGISTRY:
@@ -311,6 +315,7 @@ def run_strategy_optimization(
         use_parallel=True,
         max_workers=4,
         interval=interval,
+        use_fixed_filename=use_fixed_filename,
     )
 
     # Get sorted results by composite score
@@ -335,7 +340,7 @@ def run_strategy_optimization(
             best_result = results[0]
             # Create detailed portfolio dashboard for best result
             framework.create_portfolio_dashboard(
-                best_result, symbols, start_date, end_date
+                best_result, symbols, start_date, end_date, use_fixed_filename=use_fixed_filename
             )
             print("📊 Best result portfolio dashboard generated!")
         except Exception as e:
@@ -409,6 +414,11 @@ def main():
         "--printlog",
         action="store_true",
         help="Enable debug logging for strategy execution (default: False)",
+    )
+    parser.add_argument(
+        "--timestamped-files",
+        action="store_true",
+        help="Use timestamped filenames for dashboard/visualizations (creates new files each time). Default: uses fixed filenames for daily updates",
     )
 
     args = parser.parse_args()
@@ -493,6 +503,7 @@ def main():
             sector=args.sector,
             max_stocks=args.max_stocks,
             printlog=args.printlog,
+            use_fixed_filename=not args.timestamped_files,
         )
     else:
         run_strategy_backtest(
@@ -505,6 +516,7 @@ def main():
             universe=args.universe,
             sector=args.sector,
             printlog=args.printlog,
+            use_fixed_filename=not args.timestamped_files,
         )
 
 
@@ -610,10 +622,11 @@ if __name__ == "__main__":
                     sector=sector,
                     max_stocks=max_stocks,
                     printlog=False,  # Default to False for interactive mode
+                    use_fixed_filename=True,  # Default to fixed filenames for interactive mode
                 )
             else:
                 run_strategy_backtest(
-                    strategy_key, universe=universe, sector=sector, printlog=False
+                    strategy_key, universe=universe, sector=sector, printlog=False, use_fixed_filename=True
                 )
         else:
             print("❌ Invalid strategy name")

@@ -42,7 +42,10 @@ venv.bak/
 # Data cache and results (keep structure but ignore content)
 data_cache/*.pkl
 data_cache/*.csv
-experiment_results/*/
+experiment_results/*/*.json
+experiment_results/*/*.csv
+experiment_results/*/*.log
+!experiment_results/*/*.png
 !experiment_results/.gitkeep
 
 # Temporary files

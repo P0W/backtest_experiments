@@ -1,0 +1,233 @@
+name: Daily ETF Dashboard Update
+
+on:
+  schedule:
+    # Run daily at 6:30 AM UTC (12:00 PM IST) - after market close
+    - cron: '30 6 * * *'
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      strategy:
+        description: 'Strategy to run'
+        required: false
+        default: 'etf'
+        type: choice
+        options:
+        - etf
+        - adaptivemomentum
+      universe:
+        description: 'Universe to use'
+        required: false
+        default: 'etf'
+        type: choice
+        options:
+        - etf
+        - nifty50
+        - nifty100
+      start_date:
+        description: 'Start date (YYYY-MM-DD)'
+        required: false
+        default: '2020-01-01'
+      initial_cash:
+        description: 'Initial cash amount'
+        required: false
+        default: '100000'
+
+jobs:
+  update-dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync
+
+    - name: Set strategy parameters
+      id: params
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "strategy=${{ github.event.inputs.strategy }}" >> $GITHUB_OUTPUT
+          echo "universe=${{ github.event.inputs.universe }}" >> $GITHUB_OUTPUT
+          echo "start_date=${{ github.event.inputs.start_date }}" >> $GITHUB_OUTPUT
+          echo "initial_cash=${{ github.event.inputs.initial_cash }}" >> $GITHUB_OUTPUT
+        else
+          echo "strategy=etf" >> $GITHUB_OUTPUT
+          echo "universe=etf" >> $GITHUB_OUTPUT
+          echo "start_date=2020-01-01" >> $GITHUB_OUTPUT
+          echo "initial_cash=100000" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create results directory
+      run: |
+        mkdir -p experiment_results/${{ steps.params.outputs.strategy }}momentum
+
+    - name: Run strategy backtest
+      id: backtest
+      run: |
+        echo "Running ${{ steps.params.outputs.strategy }} strategy with ${{ steps.params.outputs.universe }} universe..."
+        
+        # Run the backtest
+        uv run unified_runner.py \
+          --strategy ${{ steps.params.outputs.strategy }} \
+          --universe ${{ steps.params.outputs.universe }} \
+          --start-date ${{ steps.params.outputs.start_date }} \
+          --initial-cash ${{ steps.params.outputs.initial_cash }} \
+          > backtest_output.log 2>&1
+        
+        # Extract performance metrics from output
+        if grep -q "Total Return:" backtest_output.log; then
+          TOTAL_RETURN=$(grep "Total Return:" backtest_output.log | tail -1 | awk '{print $3}')
+          SHARPE_RATIO=$(grep "Sharpe Ratio:" backtest_output.log | tail -1 | awk '{print $3}')
+          MAX_DRAWDOWN=$(grep "Max Drawdown:" backtest_output.log | tail -1 | awk '{print $3}')
+          FINAL_VALUE=$(grep "Final Value:" backtest_output.log | tail -1 | awk '{print $3}')
+          
+          echo "total_return=$TOTAL_RETURN" >> $GITHUB_OUTPUT
+          echo "sharpe_ratio=$SHARPE_RATIO" >> $GITHUB_OUTPUT
+          echo "max_drawdown=$MAX_DRAWDOWN" >> $GITHUB_OUTPUT
+          echo "final_value=$FINAL_VALUE" >> $GITHUB_OUTPUT
+          echo "success=true" >> $GITHUB_OUTPUT
+        else
+          echo "success=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Check for dashboard changes
+      id: changes
+      run: |
+        dashboard_file="experiment_results/${{ steps.params.outputs.strategy }}momentum/${{ steps.params.outputs.strategy }}momentum_dashboard.png"
+        
+        if [ -f "$dashboard_file" ]; then
+          echo "dashboard_exists=true" >> $GITHUB_OUTPUT
+          echo "Dashboard file found: $dashboard_file"
+          
+          # Check if file is already tracked in git
+          if git ls-files --error-unmatch "$dashboard_file" > /dev/null 2>&1; then
+            echo "File is already tracked in git"
+            # For tracked files, check if content changed using hash
+            if [ -n "$(git status --porcelain "$dashboard_file")" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "Dashboard content has changed"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "Dashboard content unchanged"
+            fi
+          else
+            # New file that's not tracked
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "New dashboard file detected"
+          fi
+          
+          # Additional check: verify file size is reasonable (not empty/corrupted)
+          file_size=$(stat -f%z "$dashboard_file" 2>/dev/null || stat -c%s "$dashboard_file" 2>/dev/null || echo "0")
+          if [ "$file_size" -gt 10000 ]; then
+            echo "file_valid=true" >> $GITHUB_OUTPUT
+            echo "Dashboard file is valid (size: $file_size bytes)"
+          else
+            echo "file_valid=false" >> $GITHUB_OUTPUT
+            echo "Warning: Dashboard file seems too small (size: $file_size bytes)"
+          fi
+        else
+          echo "dashboard_exists=false" >> $GITHUB_OUTPUT
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "file_valid=false" >> $GITHUB_OUTPUT
+          echo "Dashboard file not found: $dashboard_file"
+        fi
+
+    - name: Commit and push changes
+      if: steps.changes.outputs.changed == 'true' && steps.changes.outputs.dashboard_exists == 'true' && steps.changes.outputs.file_valid == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action Bot"
+        
+        dashboard_file="experiment_results/${{ steps.params.outputs.strategy }}momentum/${{ steps.params.outputs.strategy }}momentum_dashboard.png"
+        
+        # Force add the PNG file in case it's ignored
+        git add --force "$dashboard_file"
+        
+        # Verify the file is staged
+        if git diff --cached --quiet; then
+          echo "No changes staged. File might be ignored or unchanged."
+          exit 0
+        fi
+        
+        # Create detailed commit message
+        commit_msg="📊 Daily ${{ steps.params.outputs.strategy }} dashboard update - $(date +'%Y-%m-%d')"
+        if [ "${{ steps.backtest.outputs.success }}" = "true" ]; then
+          commit_msg="$commit_msg
+
+Performance Summary:
+• Total Return: ${{ steps.backtest.outputs.total_return }}
+• Sharpe Ratio: ${{ steps.backtest.outputs.sharpe_ratio }}
+• Max Drawdown: ${{ steps.backtest.outputs.max_drawdown }}
+• Final Value: ${{ steps.backtest.outputs.final_value }}"
+        fi
+        
+        git commit -m "$commit_msg"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload backtest log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: backtest-log-${{ steps.params.outputs.strategy }}-$(date +'%Y%m%d')
+        path: backtest_output.log
+        retention-days: 7
+
+    - name: Create summary
+      if: always()
+      run: |
+        echo "## 📊 Daily ${{ steps.params.outputs.strategy | upper }} Dashboard Update" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Date: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "- Strategy: ${{ steps.params.outputs.strategy }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Universe: ${{ steps.params.outputs.universe }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Start Date: ${{ steps.params.outputs.start_date }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Initial Cash: ₹${{ steps.params.outputs.initial_cash }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        dashboard_file="experiment_results/${{ steps.params.outputs.strategy }}momentum/${{ steps.params.outputs.strategy }}momentum_dashboard.png"
+        
+        if [ "${{ steps.backtest.outputs.success }}" = "true" ]; then
+          echo "**✅ Backtest Status: SUCCESS**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Performance Metrics:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Total Return: ${{ steps.backtest.outputs.total_return }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Sharpe Ratio: ${{ steps.backtest.outputs.sharpe_ratio }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Max Drawdown: ${{ steps.backtest.outputs.max_drawdown }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Final Value: ${{ steps.backtest.outputs.final_value }}" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "**❌ Backtest Status: FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.changes.outputs.dashboard_exists }}" = "true" ]; then
+          echo "**✅ Dashboard Status: Generated**" >> $GITHUB_STEP_SUMMARY
+          echo "- File: \`$dashboard_file\`" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.changes.outputs.changed }}" = "true" ]; then
+            echo "- Changes: Updated and committed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Changes: No changes detected" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "**❌ Dashboard Status: Generation failed**" >> $GITHUB_STEP_SUMMARY
+        fi

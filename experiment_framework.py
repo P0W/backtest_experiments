@@ -421,6 +421,7 @@ class UnifiedExperimentFramework:
         use_parallel: bool = True,
         max_workers: int = 4,
         interval: str = "1d",
+        use_fixed_filename: bool = True,
     ):
         """
         Run multiple experiments with different parameter combinations
@@ -434,6 +435,8 @@ class UnifiedExperimentFramework:
             use_parallel: Whether to use parallel processing
             max_workers: Number of parallel workers
             interval: Data interval ('1d', '5m', '15m', '1h', etc.)
+            use_fixed_filename: If True, uses fixed filenames that get overwritten.
+                               If False, uses timestamped filenames.
         """
         # Set default dates if not provided
         if end_date is None:
@@ -529,7 +532,7 @@ class UnifiedExperimentFramework:
 
         # Generate visualizations automatically
         if self.results:
-            self.create_visualizations()
+            self.create_visualizations(use_fixed_filename=use_fixed_filename)
 
         # Display summary
         self.display_results_summary()
@@ -727,8 +730,13 @@ class UnifiedExperimentFramework:
         ]
         print(tabulate(stats_data, headers="firstrow", tablefmt="compact"))
 
-    def create_visualizations(self):
-        """Create visualizations of experiment results"""
+    def create_visualizations(self, use_fixed_filename: bool = True):
+        """Create visualizations of experiment results
+        
+        Args:
+            use_fixed_filename: If True, uses a fixed filename that gets overwritten.
+                               If False, uses timestamped filename (default behavior).
+        """
         if not self.results:
             print("❌ No results to visualize")
             return
@@ -841,11 +849,19 @@ class UnifiedExperimentFramework:
         plt.tight_layout()
 
         # Save the plot
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.join(
-            self.strategy_results_dir,
-            f"{self.strategy_name.lower()}_analysis_{timestamp}.png",
-        )
+        if use_fixed_filename:
+            # Use fixed filename for daily updates (overwrites previous file)
+            filename = os.path.join(
+                self.strategy_results_dir,
+                f"{self.strategy_name.lower()}_analysis.png",
+            )
+        else:
+            # Use timestamped filename (creates new file each time)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = os.path.join(
+                self.strategy_results_dir,
+                f"{self.strategy_name.lower()}_analysis_{timestamp}.png",
+            )
         plt.savefig(filename, dpi=300, bbox_inches="tight")
         print(f"📊 Visualizations saved to {filename}")
 
@@ -858,6 +874,7 @@ class UnifiedExperimentFramework:
         start_date: datetime,
         end_date: datetime,
         strategy_class=None,
+        use_fixed_filename: bool = True,
     ):
         """
         Create comprehensive portfolio performance dashboard
@@ -868,6 +885,8 @@ class UnifiedExperimentFramework:
             start_date: Start date of analysis
             end_date: End date of analysis
             strategy_class: Strategy class for getting strategy instance (optional)
+            use_fixed_filename: If True, uses a fixed filename that gets overwritten.
+                               If False, uses timestamped filename (default behavior).
         """
         print(
             f"📊 Creating comprehensive portfolio dashboard for {self.strategy_name}..."
@@ -1473,11 +1492,19 @@ class UnifiedExperimentFramework:
         plt.tight_layout(rect=[0, 0, 1, 0.97])  # Leave space for suptitle
 
         # Save the dashboard
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.join(
-            self.strategy_results_dir,
-            f"{self.strategy_name.lower()}_dashboard_{timestamp}.png",
-        )
+        if use_fixed_filename:
+            # Use fixed filename for daily updates (overwrites previous file)
+            filename = os.path.join(
+                self.strategy_results_dir,
+                f"{self.strategy_name.lower()}_dashboard.png",
+            )
+        else:
+            # Use timestamped filename (creates new file each time)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = os.path.join(
+                self.strategy_results_dir,
+                f"{self.strategy_name.lower()}_dashboard_{timestamp}.png",
+            )
         plt.savefig(filename, dpi=300, bbox_inches="tight")
         print(f"📊 Comprehensive portfolio dashboard saved to {filename}")
 
@@ -1491,6 +1518,7 @@ class UnifiedExperimentFramework:
         initial_cash: float = 1000000,
         params: Dict[str, Any] = None,
         interval: str = "1d",
+        use_fixed_filename: bool = True,
     ) -> Optional[str]:
         """
         Run portfolio analysis and generate dashboard without experiments
@@ -1502,6 +1530,8 @@ class UnifiedExperimentFramework:
             initial_cash: Initial portfolio value
             params: Strategy parameters (uses defaults if None)
             interval: Data interval ('1d', '5m', '15m', '1h', etc.)
+            use_fixed_filename: If True, uses a fixed filename that gets overwritten.
+                               If False, uses timestamped filename.
 
         Returns:
             Path to generated dashboard file
@@ -1525,7 +1555,7 @@ class UnifiedExperimentFramework:
         if result:
             # Generate comprehensive dashboard
             dashboard_file = self.create_portfolio_dashboard(
-                result, symbols, start_date, end_date
+                result, symbols, start_date, end_date, use_fixed_filename=use_fixed_filename
             )
 
             # Print summary

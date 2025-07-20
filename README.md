@@ -1,4 +1,5 @@
 [![Daily Data Refresh](https://github.com/P0W/backtest_experiments/actions/workflows/refresh_data.yml/badge.svg)](https://github.com/P0W/backtest_experiments/actions/workflows/refresh_data.yml)
+[![Daily ETF Dashboard](https://github.com/P0W/backtest_experiments/actions/workflows/daily-dashboard-update.yml/badge.svg)](https://github.com/P0W/backtest_experiments/actions/workflows/daily-dashboard-update.yml)
 
 # Trading Strategy Experiment Framework
 
@@ -29,6 +30,23 @@ This project uses `uv` as the package manager. Key dependencies:
 - **Visualizations**: Performance distributions, parameter correlations
 - **Export**: JSON and CSV format results
 - **Optimal Parameters**: Best parameter combinations identified
+
+## 🤖 Automated Dashboard Updates
+
+The repository includes automated GitHub Actions workflows for daily updates:
+
+### Daily ETF Dashboard
+- **Schedule**: Runs daily at 12:00 PM IST (6:30 AM UTC) after market close
+- **Action**: Updates `experiment_results/etfmomentum/etfmomentum_dashboard.png`
+- **Strategy**: ETF Momentum strategy with 12 ETF universe
+- **Commit**: Automatically commits updated dashboard with daily timestamp
+- **Manual Trigger**: Can be triggered manually via GitHub Actions tab
+
+### Key Features
+- **Fixed Filename**: Always updates the same PNG file for consistent dashboard viewing
+- **Smart Caching**: Only commits if dashboard actually changed
+- **Market Timing**: Runs after Indian market close for latest data
+- **Failure Handling**: Includes error handling and status reporting
 
 ## 📊 Performance Metrics
 
