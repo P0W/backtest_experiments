@@ -37,6 +37,9 @@ class ETFMomentumStrategy(BaseStrategy):
         ),  # Exit multiplier (exit if rank > portfolio_size * buffer)
         ("min_momentum_threshold", 0.0),  # Minimum momentum to consider
         ("volume_threshold", 100000),  # Minimum daily volume threshold
+        ("use_threshold_rebalancing", False),  # Enable threshold-based rebalancing
+        ("profit_threshold_pct", 10.0),  # Profit threshold % to trigger rebalancing
+        ("loss_threshold_pct", -5.0),  # Loss threshold % to trigger rebalancing
         ("printlog", False),  # Whether to print log messages
     )
 
@@ -45,6 +48,7 @@ class ETFMomentumStrategy(BaseStrategy):
         self.rebalance_counter = 0
         self.last_rebalance_date = None
         self.portfolio_holdings = {}  # Track current holdings
+        self.position_entry_prices = {}  # Track entry prices for threshold calculations
 
         # Initialize indicators for each ETF
         self.indicators = {}
@@ -163,19 +167,71 @@ class ETFMomentumStrategy(BaseStrategy):
             self.log(f"First rebalance check on {current_date}")
             return True
 
+        # If threshold-based rebalancing is enabled, only use threshold logic
+        if self.p.use_threshold_rebalancing:
+            threshold_rebalance = self._check_threshold_rebalance()
+            if threshold_rebalance:
+                self.log("Threshold-based rebalance triggered")
+                return True
+            # Don't do time-based rebalancing when threshold is enabled
+            return False
+
+        # Time-based rebalancing check (only when threshold is disabled)
         days_since_rebalance = (current_date - self.last_rebalance_date).days
-        should_rebalance = days_since_rebalance >= self.p.rebalance_frequency
+        time_based_rebalance = days_since_rebalance >= self.p.rebalance_frequency
 
-        if should_rebalance:
+        if time_based_rebalance:
             self.log(
-                f"Time to rebalance: {days_since_rebalance} days >= {self.p.rebalance_frequency} threshold"
+                f"Time-based rebalance triggered: {days_since_rebalance} days >= {self.p.rebalance_frequency} threshold"
             )
+            return True
 
-        return should_rebalance
+        return False
+
+    def _check_threshold_rebalance(self):
+        """Check if any position has hit profit/loss thresholds"""
+        threshold_hit = False
+        positions_checked = 0
+        
+        for d in self.datas:
+            etf_name = d._name
+            position = self.getposition(d)
+            
+            if position.size != 0:
+                positions_checked += 1
+                if etf_name in self.position_entry_prices:
+                    entry_price = self.position_entry_prices[etf_name]
+                    current_price = d.close[0]
+                    
+                    # Calculate P&L percentage
+                    pnl_pct = ((current_price - entry_price) / entry_price) * 100
+                    
+                    self.log(f"{etf_name}: Entry={entry_price:.2f}, Current={current_price:.2f}, P&L={pnl_pct:.2f}%")
+                    
+                    # Check thresholds
+                    if pnl_pct >= self.p.profit_threshold_pct:
+                        self.log(f"{etf_name}: Profit threshold hit - {pnl_pct:.2f}% >= {self.p.profit_threshold_pct}%")
+                        threshold_hit = True
+                    elif pnl_pct <= self.p.loss_threshold_pct:
+                        self.log(f"{etf_name}: Loss threshold hit - {pnl_pct:.2f}% <= {self.p.loss_threshold_pct}%")
+                        threshold_hit = True
+                    else:
+                        self.log(f"{etf_name}: Within thresholds - {self.p.loss_threshold_pct}% < {pnl_pct:.2f}% < {self.p.profit_threshold_pct}%")
+                else:
+                    self.log(f"{etf_name}: Position exists but no entry price tracked - this should not happen!")
+        
+        if positions_checked == 0:
+            self.log("No positions to check for thresholds")
+        elif not threshold_hit:
+            self.log(f"Checked {positions_checked} positions - no threshold hits")
+        
+        return threshold_hit
 
     def _rebalance_portfolio(self, current_date):
         """Rebalance the portfolio based on momentum scores"""
         try:
+            self.log(f"Starting rebalance process on {current_date}")
+            
             # Calculate momentum scores for all ETFs
             momentum_scores = self._calculate_momentum_scores()
 
@@ -183,21 +239,28 @@ class ETFMomentumStrategy(BaseStrategy):
                 self.log("No valid momentum scores calculated, skipping rebalance")
                 return
 
+            self.log(f"Calculated momentum scores for {len(momentum_scores)} ETFs")
+
             # Filter ETFs that meet criteria
             eligible_etfs = self._filter_eligible_etfs(momentum_scores)
 
+            if len(eligible_etfs) == 0:
+                self.log("No eligible ETFs found - cannot rebalance")
+                return
+
+            # Use available ETFs if fewer than portfolio size (but at least 1)
+            target_portfolio_size = min(self.p.portfolio_size, len(eligible_etfs))
+            
             if len(eligible_etfs) < self.p.portfolio_size:
                 self.log(
-                    f"Only {len(eligible_etfs)} eligible ETFs found, need {self.p.portfolio_size}"
+                    f"Only {len(eligible_etfs)} eligible ETFs found, using all {target_portfolio_size} instead of target {self.p.portfolio_size}"
                 )
-                if len(eligible_etfs) == 0:
-                    return
 
             # Select top ETFs
             top_etfs = eligible_etfs[: self.p.portfolio_size]
             top_etf_names = [etf["name"] for etf in top_etfs]
 
-            self.log(f"Selected top ETFs: {top_etf_names}")
+            self.log(f"Selected top {len(top_etf_names)} ETFs: {top_etf_names}")
 
             # Execute rebalancing trades
             self._execute_rebalancing_trades(top_etf_names)
@@ -314,7 +377,7 @@ class ETFMomentumStrategy(BaseStrategy):
         for etf_name, data in momentum_scores.items():
             # Apply filters
             meets_momentum_threshold = data["score"] >= self.p.min_momentum_threshold
-            meets_trend_filter = data["trend_filter"]
+            meets_trend_filter = data["trend_filter"]  # Re-enabled trend filter
             meets_volume_threshold = data["avg_volume"] >= self.p.volume_threshold
 
             if (
@@ -372,6 +435,9 @@ class ETFMomentumStrategy(BaseStrategy):
                     self.log(f"Exiting position in {etf_name}")
                     try:
                         self.sell(data=pos_info["data"], size=pos_info["size"])
+                        # Remove from entry price tracking
+                        self.position_entry_prices.pop(etf_name, None)
+                        self.log(f"{etf_name}: Removed from entry price tracking (position exited)")
                     except Exception as e:
                         self.log(f"Error selling {etf_name}: {str(e)}")
 
@@ -401,9 +467,34 @@ class ETFMomentumStrategy(BaseStrategy):
                         if shares_diff > 0:
                             self.log(f"Buying {shares_diff} shares of {etf_name}")
                             self.buy(data=etf_data, size=shares_diff)
+                            # Set entry price only for new positions, not for adding to existing ones
+                            if current_shares == 0:
+                                # New position
+                                self.position_entry_prices[etf_name] = current_price
+                                self.log(f"{etf_name}: NEW position - Entry price set to {current_price:.2f}")
+                            else:
+                                # Adding to existing position - calculate weighted average entry price
+                                if etf_name in self.position_entry_prices:
+                                    old_entry = self.position_entry_prices[etf_name]
+                                    total_shares = current_shares + shares_diff
+                                    weighted_avg = ((current_shares * old_entry) + (shares_diff * current_price)) / total_shares
+                                    self.position_entry_prices[etf_name] = weighted_avg
+                                    self.log(f"{etf_name}: ADDING to position - New weighted avg entry price: {weighted_avg:.2f} (was {old_entry:.2f})")
+                                else:
+                                    # This shouldn't happen but handle it
+                                    self.position_entry_prices[etf_name] = current_price
+                                    self.log(f"{etf_name}: Missing entry price - Setting to current: {current_price:.2f}")
                         else:
                             self.log(f"Selling {abs(shares_diff)} shares of {etf_name}")
                             self.sell(data=etf_data, size=abs(shares_diff))
+                            # If completely exiting position, remove from tracking
+                            if current_shares + shares_diff <= 0:
+                                self.position_entry_prices.pop(etf_name, None)
+                                self.log(f"{etf_name}: Removed from entry price tracking (position closed)")
+                            else:
+                                # Partial sell - keep the same entry price for remaining shares
+                                entry_price = self.position_entry_prices.get(etf_name, current_price)
+                                self.log(f"{etf_name}: Partial sell - keeping entry price {entry_price:.2f}")
                 except Exception as e:
                     self.log(f"Error processing {etf_name}: {str(e)}")
 
@@ -432,31 +523,43 @@ class ETFMomentumConfig(StrategyConfig):
     def get_parameter_grid(self) -> Dict[str, List[Any]]:
         """
         Define the parameter grid for ETF momentum strategy experiments
+        
+        Total combinations: 1 x 4 x 3 x 3 x 3 x 3 x 3 x 2 x 2 x 3 x 3 = 11,664 combinations
+        Max experiments needed to test fully: 11,664
         """
         return {
-            "portfolio_size": [5],
-            "rebalance_frequency": [20, 30, 45, 60],
-            "long_term_period": [100, 180, 200],
-            "short_term_period": [30, 60, 90],
-            "moving_avg_period": [20, 50, 100],
-            "exit_rank_buffer": [1.5, 2.0, 2.5],
-            "min_momentum_threshold": [0.0, 0.05, 0.10],
-            "volume_threshold": [100000, 200000],
+            "portfolio_size": [5],  # 1 option
+            "rebalance_frequency": [20, 30, 45, 60],  # 4 options
+            "long_term_period": [100, 180, 200],  # 3 options
+            "short_term_period": [30, 60, 90],  # 3 options
+            "moving_avg_period": [20, 50, 100],  # 3 options
+            "exit_rank_buffer": [1.5, 2.0, 2.5],  # 3 options
+            "min_momentum_threshold": [0.0, 0.05, 0.10],  # 3 options
+            "volume_threshold": [100000, 200000],  # 2 options
+            "use_threshold_rebalancing": [False, True],  # 2 options
+            "profit_threshold_pct": [4.0, 5.0, 10.0],  # 3 options
+            "loss_threshold_pct": [-2.5, -3.0, -5.0],  # 3 options
         }
 
     def get_intraday_parameter_grid(self) -> Dict[str, List[Any]]:
         """
         Intraday-optimized parameter grid (shorter periods)
+        
+        Total combinations: 3 x 3 x 3 x 3 x 3 x 3 x 3 x 2 x 2 x 3 x 3 = 39,366 combinations
+        Max experiments needed to test fully: 39,366
         """
         return {
-            "portfolio_size": [3, 5, 7],
-            "rebalance_frequency": [5, 10, 15],  # Days
-            "long_term_period": [60, 90, 120],  # Shorter for intraday
-            "short_term_period": [15, 30, 45],
-            "moving_avg_period": [10, 20, 30],
-            "exit_rank_buffer": [1.5, 2.0, 2.5],
-            "min_momentum_threshold": [0.0, 0.05, 0.10],
-            "volume_threshold": [100000, 200000],
+            "portfolio_size": [3, 5, 7],  # 3 options
+            "rebalance_frequency": [5, 10, 15],  # 3 options (Days)
+            "long_term_period": [60, 90, 120],  # 3 options (Shorter for intraday)
+            "short_term_period": [15, 30, 45],  # 3 options
+            "moving_avg_period": [10, 20, 30],  # 3 options
+            "exit_rank_buffer": [1.5, 2.0, 2.5],  # 3 options
+            "min_momentum_threshold": [0.0, 0.05, 0.10],  # 3 options
+            "volume_threshold": [100000, 200000],  # 2 options
+            "use_threshold_rebalancing": [False, True],  # 2 options
+            "profit_threshold_pct": [5.0, 8.0, 12.0],  # 3 options
+            "loss_threshold_pct": [-2.0, -3.0, -5.0],  # 3 options
         }
 
     def get_default_params(self) -> Dict[str, Any]:
@@ -472,6 +575,9 @@ class ETFMomentumConfig(StrategyConfig):
             "exit_rank_buffer": 1.5,
             "min_momentum_threshold": 0.0,
             "volume_threshold": 200000,
+            "use_threshold_rebalancing": False,
+            "profit_threshold_pct": 4,
+            "loss_threshold_pct": -4.0,
         }
 
     def validate_params(self, params: Dict[str, Any]) -> bool:
@@ -503,6 +609,27 @@ class ETFMomentumConfig(StrategyConfig):
         # Volume threshold should be positive
         if params.get("volume_threshold", 0) <= 0:
             return False
+
+        # Threshold rebalancing parameters validation
+        if params.get("use_threshold_rebalancing", False):
+            profit_threshold = params.get("profit_threshold_pct", 0)
+            loss_threshold = params.get("loss_threshold_pct", 0)
+            
+            # Profit threshold should be positive
+            if profit_threshold <= 0:
+                return False
+            
+            # Loss threshold should be negative
+            if loss_threshold >= 0:
+                return False
+            
+            # Ensure profit threshold is reasonable (between 1% and 50%)
+            if profit_threshold < 1.0 or profit_threshold > 50.0:
+                return False
+                
+            # Ensure loss threshold is reasonable (between -1% and -50%)
+            if loss_threshold > -1.0 or loss_threshold < -50.0:
+                return False
 
         return True
 

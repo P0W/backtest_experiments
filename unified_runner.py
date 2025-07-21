@@ -194,37 +194,21 @@ def run_strategy_backtest(
     default_params = config.get_default_params()
     default_params["printlog"] = printlog
 
-    # Run single experiment with default parameters
-    result = framework.run_single_experiment(
-        params=default_params,
+    # Run portfolio analysis (includes comprehensive display and dashboard)
+    dashboard_file = framework.run_portfolio_analysis(
         symbols=symbols,
         start_date=start_date,
         end_date=end_date,
         initial_cash=initial_cash,
+        params=default_params,
         interval=interval,
+        use_fixed_filename=use_fixed_filename,
     )
 
-    if result:
-        print("\n✅ Backtest completed successfully!")
-        print(f"📈 Total Return: {result.total_return:.2f}%")
-        print(f"⚖️ Sharpe Ratio: {result.sharpe_ratio:.3f}")
-        print(f"📉 Max Drawdown: {result.max_drawdown:.2f}%")
-        print(f"💰 Final Value: ₹{result.final_value:,.2f}")
-
-        # Generate comprehensive visualization dashboard
-        try:
-            framework.create_portfolio_dashboard(
-                result,
-                symbols,
-                start_date,
-                end_date,
-                use_fixed_filename=use_fixed_filename,
-            )
-            print("📊 Portfolio performance dashboard generated successfully!")
-        except Exception as e:
-            print(f"⚠️ Could not generate portfolio dashboard: {e}")
+    if dashboard_file:
+        print("📊 Portfolio performance dashboard generated successfully!")
     else:
-        print("❌ Backtest failed")
+        print("❌ Portfolio analysis failed")
 
 
 def run_strategy_optimization(
