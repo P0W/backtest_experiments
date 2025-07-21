@@ -2,7 +2,7 @@ name: Daily ETF Dashboard Update
 
 on:
   schedule:
-    - cron: '30 6 * * *'
+    - cron: '30 3 * * *'
   workflow_dispatch:
     inputs:
       strategy:
