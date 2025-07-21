@@ -192,46 +192,56 @@ class ETFMomentumStrategy(BaseStrategy):
         """Check if any position has hit profit/loss thresholds"""
         threshold_hit = False
         positions_checked = 0
-        
+
         for d in self.datas:
             etf_name = d._name
             position = self.getposition(d)
-            
+
             if position.size != 0:
                 positions_checked += 1
                 if etf_name in self.position_entry_prices:
                     entry_price = self.position_entry_prices[etf_name]
                     current_price = d.close[0]
-                    
+
                     # Calculate P&L percentage
                     pnl_pct = ((current_price - entry_price) / entry_price) * 100
-                    
-                    self.log(f"{etf_name}: Entry={entry_price:.2f}, Current={current_price:.2f}, P&L={pnl_pct:.2f}%")
-                    
+
+                    self.log(
+                        f"{etf_name}: Entry={entry_price:.2f}, Current={current_price:.2f}, P&L={pnl_pct:.2f}%"
+                    )
+
                     # Check thresholds
                     if pnl_pct >= self.p.profit_threshold_pct:
-                        self.log(f"{etf_name}: Profit threshold hit - {pnl_pct:.2f}% >= {self.p.profit_threshold_pct}%")
+                        self.log(
+                            f"{etf_name}: Profit threshold hit - {pnl_pct:.2f}% >= {self.p.profit_threshold_pct}%"
+                        )
                         threshold_hit = True
                     elif pnl_pct <= self.p.loss_threshold_pct:
-                        self.log(f"{etf_name}: Loss threshold hit - {pnl_pct:.2f}% <= {self.p.loss_threshold_pct}%")
+                        self.log(
+                            f"{etf_name}: Loss threshold hit - {pnl_pct:.2f}% <= {self.p.loss_threshold_pct}%"
+                        )
                         threshold_hit = True
                     else:
-                        self.log(f"{etf_name}: Within thresholds - {self.p.loss_threshold_pct}% < {pnl_pct:.2f}% < {self.p.profit_threshold_pct}%")
+                        self.log(
+                            f"{etf_name}: Within thresholds - {self.p.loss_threshold_pct}% < {pnl_pct:.2f}% < {self.p.profit_threshold_pct}%"
+                        )
                 else:
-                    self.log(f"{etf_name}: Position exists but no entry price tracked - this should not happen!")
-        
+                    self.log(
+                        f"{etf_name}: Position exists but no entry price tracked - this should not happen!"
+                    )
+
         if positions_checked == 0:
             self.log("No positions to check for thresholds")
         elif not threshold_hit:
             self.log(f"Checked {positions_checked} positions - no threshold hits")
-        
+
         return threshold_hit
 
     def _rebalance_portfolio(self, current_date):
         """Rebalance the portfolio based on momentum scores"""
         try:
             self.log(f"Starting rebalance process on {current_date}")
-            
+
             # Calculate momentum scores for all ETFs
             momentum_scores = self._calculate_momentum_scores()
 
@@ -250,7 +260,7 @@ class ETFMomentumStrategy(BaseStrategy):
 
             # Use available ETFs if fewer than portfolio size (but at least 1)
             target_portfolio_size = min(self.p.portfolio_size, len(eligible_etfs))
-            
+
             if len(eligible_etfs) < self.p.portfolio_size:
                 self.log(
                     f"Only {len(eligible_etfs)} eligible ETFs found, using all {target_portfolio_size} instead of target {self.p.portfolio_size}"
@@ -437,7 +447,9 @@ class ETFMomentumStrategy(BaseStrategy):
                         self.sell(data=pos_info["data"], size=pos_info["size"])
                         # Remove from entry price tracking
                         self.position_entry_prices.pop(etf_name, None)
-                        self.log(f"{etf_name}: Removed from entry price tracking (position exited)")
+                        self.log(
+                            f"{etf_name}: Removed from entry price tracking (position exited)"
+                        )
                     except Exception as e:
                         self.log(f"Error selling {etf_name}: {str(e)}")
 
@@ -471,30 +483,45 @@ class ETFMomentumStrategy(BaseStrategy):
                             if current_shares == 0:
                                 # New position
                                 self.position_entry_prices[etf_name] = current_price
-                                self.log(f"{etf_name}: NEW position - Entry price set to {current_price:.2f}")
+                                self.log(
+                                    f"{etf_name}: NEW position - Entry price set to {current_price:.2f}"
+                                )
                             else:
                                 # Adding to existing position - calculate weighted average entry price
                                 if etf_name in self.position_entry_prices:
                                     old_entry = self.position_entry_prices[etf_name]
                                     total_shares = current_shares + shares_diff
-                                    weighted_avg = ((current_shares * old_entry) + (shares_diff * current_price)) / total_shares
+                                    weighted_avg = (
+                                        (current_shares * old_entry)
+                                        + (shares_diff * current_price)
+                                    ) / total_shares
                                     self.position_entry_prices[etf_name] = weighted_avg
-                                    self.log(f"{etf_name}: ADDING to position - New weighted avg entry price: {weighted_avg:.2f} (was {old_entry:.2f})")
+                                    self.log(
+                                        f"{etf_name}: ADDING to position - New weighted avg entry price: {weighted_avg:.2f} (was {old_entry:.2f})"
+                                    )
                                 else:
                                     # This shouldn't happen but handle it
                                     self.position_entry_prices[etf_name] = current_price
-                                    self.log(f"{etf_name}: Missing entry price - Setting to current: {current_price:.2f}")
+                                    self.log(
+                                        f"{etf_name}: Missing entry price - Setting to current: {current_price:.2f}"
+                                    )
                         else:
                             self.log(f"Selling {abs(shares_diff)} shares of {etf_name}")
                             self.sell(data=etf_data, size=abs(shares_diff))
                             # If completely exiting position, remove from tracking
                             if current_shares + shares_diff <= 0:
                                 self.position_entry_prices.pop(etf_name, None)
-                                self.log(f"{etf_name}: Removed from entry price tracking (position closed)")
+                                self.log(
+                                    f"{etf_name}: Removed from entry price tracking (position closed)"
+                                )
                             else:
                                 # Partial sell - keep the same entry price for remaining shares
-                                entry_price = self.position_entry_prices.get(etf_name, current_price)
-                                self.log(f"{etf_name}: Partial sell - keeping entry price {entry_price:.2f}")
+                                entry_price = self.position_entry_prices.get(
+                                    etf_name, current_price
+                                )
+                                self.log(
+                                    f"{etf_name}: Partial sell - keeping entry price {entry_price:.2f}"
+                                )
                 except Exception as e:
                     self.log(f"Error processing {etf_name}: {str(e)}")
 
@@ -523,7 +550,7 @@ class ETFMomentumConfig(StrategyConfig):
     def get_parameter_grid(self) -> Dict[str, List[Any]]:
         """
         Define the parameter grid for ETF momentum strategy experiments
-        
+
         Total combinations: 1 x 4 x 3 x 3 x 3 x 3 x 3 x 2 x 2 x 3 x 3 = 11,664 combinations
         Max experiments needed to test fully: 11,664
         """
@@ -544,7 +571,7 @@ class ETFMomentumConfig(StrategyConfig):
     def get_intraday_parameter_grid(self) -> Dict[str, List[Any]]:
         """
         Intraday-optimized parameter grid (shorter periods)
-        
+
         Total combinations: 3 x 3 x 3 x 3 x 3 x 3 x 3 x 2 x 2 x 3 x 3 = 39,366 combinations
         Max experiments needed to test fully: 39,366
         """
@@ -614,19 +641,19 @@ class ETFMomentumConfig(StrategyConfig):
         if params.get("use_threshold_rebalancing", False):
             profit_threshold = params.get("profit_threshold_pct", 0)
             loss_threshold = params.get("loss_threshold_pct", 0)
-            
+
             # Profit threshold should be positive
             if profit_threshold <= 0:
                 return False
-            
+
             # Loss threshold should be negative
             if loss_threshold >= 0:
                 return False
-            
+
             # Ensure profit threshold is reasonable (between 1% and 50%)
             if profit_threshold < 1.0 or profit_threshold > 50.0:
                 return False
-                
+
             # Ensure loss threshold is reasonable (between -1% and -50%)
             if loss_threshold > -1.0 or loss_threshold < -50.0:
                 return False

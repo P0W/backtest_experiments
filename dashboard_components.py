@@ -5,12 +5,11 @@ This module contains individual chart creation methods for the portfolio dashboa
 following the Single Responsibility Principle for better maintainability.
 """
 
+
 import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 import numpy as np
-from datetime import datetime
-from typing import Dict, List, Any
+import pandas as pd
+import seaborn as sns
 
 
 class DashboardComponents:
@@ -235,18 +234,18 @@ class DashboardComponents:
             label="12% p.a. Benchmark",
         )
 
-        ax.set_title(
-            "Cumulative Returns vs Benchmarks", fontsize=14, fontweight="bold"
-        )
+        ax.set_title("Cumulative Returns vs Benchmarks", fontsize=14, fontweight="bold")
         ax.set_ylabel("Cumulative Return (%)")
         ax.grid(True, alpha=0.3)
         ax.legend()
 
     @staticmethod
-    def create_performance_metrics_panel(ax, result, start_date, end_date, portfolio_df):
+    def create_performance_metrics_panel(
+        ax, result, start_date, end_date, portfolio_df
+    ):
         """Create key performance metrics panel"""
         returns_clean = portfolio_df["returns"].dropna()
-        
+
         # Calculate proper annualized return using CAGR formula
         days_in_period = (end_date - start_date).days
         years_in_period = days_in_period / 365.25
@@ -295,13 +294,15 @@ class DashboardComponents:
         ax.set_title("Key Performance Metrics", fontsize=14, fontweight="bold")
 
     @staticmethod
-    def create_risk_return_scatter(ax, result, start_date, end_date, portfolio_df, strategy_name):
+    def create_risk_return_scatter(
+        ax, result, start_date, end_date, portfolio_df, strategy_name
+    ):
         """Create risk-return scatter plot"""
         returns_clean = portfolio_df["returns"].dropna()
         volatility = (
             returns_clean.std() * np.sqrt(252) * 100 if len(returns_clean) > 1 else 0
         )
-        
+
         # Calculate annualized return
         days_in_period = (end_date - start_date).days
         years_in_period = days_in_period / 365.25
@@ -340,7 +341,9 @@ class DashboardComponents:
         ax.legend()
 
     @staticmethod
-    def create_portfolio_summary_panel(ax, strategy_name, start_date, end_date, symbols, result):
+    def create_portfolio_summary_panel(
+        ax, strategy_name, start_date, end_date, symbols, result
+    ):
         """Create portfolio summary panel"""
         summary_text = f"""
             Portfolio Summary:
@@ -438,9 +441,7 @@ class DashboardComponents:
                 alpha=0.7,
                 label=f"Mean: {rolling_vol.mean():.1f}%",
             )
-            ax.set_title(
-                "Rolling Volatility (30-Day)", fontsize=14, fontweight="bold"
-            )
+            ax.set_title("Rolling Volatility (30-Day)", fontsize=14, fontweight="bold")
             ax.set_ylabel("Volatility (% p.a.)")
             ax.grid(True, alpha=0.3)
             ax.legend()
@@ -453,9 +454,7 @@ class DashboardComponents:
                 va="center",
                 transform=ax.transAxes,
             )
-            ax.set_title(
-                "Rolling Volatility (30-Day)", fontsize=14, fontweight="bold"
-            )
+            ax.set_title("Rolling Volatility (30-Day)", fontsize=14, fontweight="bold")
 
     @staticmethod
     def create_underwater_plot(ax, portfolio_df):

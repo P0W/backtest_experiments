@@ -18,16 +18,17 @@ from typing import Any, Dict, List, Optional
 
 import backtrader as bt
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
 
+from dashboard_components import DashboardComponents
+from performance_display import (PerformanceDisplayManager,
+                                 SingleStrategyAnalyzer,
+                                 StatisticsDisplayManager)
 from strategies.base_strategy import ExperimentResult, StrategyConfig
 from streak_analyzer import DetailedTradeAnalyzer, StreakAnalyzer
 from utils import IndianBrokerageCommission, MarketDataLoader
-from dashboard_components import DashboardComponents
-from performance_display import PerformanceDisplayManager, StatisticsDisplayManager, SingleStrategyAnalyzer
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore")
@@ -646,9 +647,9 @@ class UnifiedExperimentFramework:
         # Best result detailed breakdown
         if self.best_result:
             PerformanceDisplayManager.display_single_result_performance(
-                self.best_result, 
+                self.best_result,
                 f"🏆 BEST STRATEGY PERFORMANCE (Composite Score: {self.best_score:.3f})",
-                self.best_result.params
+                self.best_result.params,
             )
 
         # Top 10 results with comprehensive metrics
@@ -797,7 +798,9 @@ class UnifiedExperimentFramework:
 
         # plt.show()
 
-    def _prepare_portfolio_data(self, result: ExperimentResult, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+    def _prepare_portfolio_data(
+        self, result: ExperimentResult, start_date: datetime, end_date: datetime
+    ) -> pd.DataFrame:
         """Prepare portfolio data for dashboard creation"""
         # Prepare data
         portfolio_values = getattr(result, "portfolio_values", [])
@@ -856,7 +859,7 @@ class UnifiedExperimentFramework:
                 self.strategy_results_dir,
                 f"{self.strategy_name.lower()}_dashboard_{timestamp}.png",
             )
-        
+
         plt.tight_layout(rect=[0, 0, 1, 0.97])  # Leave space for suptitle
         plt.savefig(filename, dpi=300, bbox_inches="tight")
         print(f"📊 Comprehensive portfolio dashboard saved to {filename}")
@@ -882,11 +885,13 @@ class UnifiedExperimentFramework:
             strategy_class: Strategy class for getting strategy instance (optional)
             use_fixed_filename: If True, uses a fixed filename that gets overwritten.
                                If False, uses timestamped filename (default behavior).
-                               
+
         Returns:
             str: Path to the generated dashboard file
         """
-        print(f"📊 Creating comprehensive portfolio dashboard for {self.strategy_name}...")
+        print(
+            f"📊 Creating comprehensive portfolio dashboard for {self.strategy_name}..."
+        )
 
         # Setup figure and prepare data
         fig = self._setup_dashboard_figure()
@@ -903,12 +908,30 @@ class UnifiedExperimentFramework:
         # Row 2: Returns Distribution, Rolling Sharpe, Cumulative Returns
         components.create_returns_distribution(plt.subplot(5, 3, 4), portfolio_df)
         components.create_rolling_sharpe_chart(plt.subplot(5, 3, 5), portfolio_df)
-        components.create_cumulative_returns_chart(plt.subplot(5, 3, 6), portfolio_df, self.strategy_name)
+        components.create_cumulative_returns_chart(
+            plt.subplot(5, 3, 6), portfolio_df, self.strategy_name
+        )
 
         # Row 3: Performance Metrics, Risk-Return Scatter, Portfolio Summary
-        components.create_performance_metrics_panel(plt.subplot(5, 3, 7), result, start_date, end_date, portfolio_df)
-        components.create_risk_return_scatter(plt.subplot(5, 3, 8), result, start_date, end_date, portfolio_df, self.strategy_name)
-        components.create_portfolio_summary_panel(plt.subplot(5, 3, 9), self.strategy_name, start_date, end_date, symbols, result)
+        components.create_performance_metrics_panel(
+            plt.subplot(5, 3, 7), result, start_date, end_date, portfolio_df
+        )
+        components.create_risk_return_scatter(
+            plt.subplot(5, 3, 8),
+            result,
+            start_date,
+            end_date,
+            portfolio_df,
+            self.strategy_name,
+        )
+        components.create_portfolio_summary_panel(
+            plt.subplot(5, 3, 9),
+            self.strategy_name,
+            start_date,
+            end_date,
+            symbols,
+            result,
+        )
 
         # Row 4: Weekly Pattern, Rolling Volatility, Underwater Plot
         components.create_weekly_returns_pattern(plt.subplot(5, 3, 10), portfolio_df)
@@ -965,8 +988,10 @@ class UnifiedExperimentFramework:
 
         if result:
             # Display comprehensive performance details
-            self.display_single_strategy_performance(result, symbols, start_date, end_date, params)
-            
+            self.display_single_strategy_performance(
+                result, symbols, start_date, end_date, params
+            )
+
             # Generate comprehensive dashboard
             dashboard_file = self.create_portfolio_dashboard(
                 result,
@@ -982,12 +1007,12 @@ class UnifiedExperimentFramework:
             return None
 
     def display_single_strategy_performance(
-        self, 
-        result: ExperimentResult, 
-        symbols: List[str], 
-        start_date: datetime, 
+        self,
+        result: ExperimentResult,
+        symbols: List[str],
+        start_date: datetime,
         end_date: datetime,
-        params: Dict[str, Any]
+        params: Dict[str, Any],
     ):
         """Display comprehensive performance details for a single strategy run"""
         SingleStrategyAnalyzer.display_comprehensive_analysis(
