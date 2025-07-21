@@ -119,7 +119,9 @@ class ETFMomentumStrategy(BaseStrategy):
                     except (IndexError, TypeError):
                         continue
 
-            self.log(f"Prenext: {len(available_etfs)} ETFs with sufficient data available")
+            self.log(
+                f"Prenext: {len(available_etfs)} ETFs with sufficient data available"
+            )
 
             # If we have enough ETFs to form a portfolio, execute strategy
             if len(available_etfs) >= self.p.portfolio_size:
@@ -141,7 +143,7 @@ class ETFMomentumStrategy(BaseStrategy):
         """
         # Call parent next() method to track portfolio performance
         super().next()
-        
+
     def execute_strategy(self):
         """Execute ETF momentum strategy logic"""
         current_date = self.datas[0].datetime.date(0)
@@ -342,12 +344,14 @@ class ETFMomentumStrategy(BaseStrategy):
         """
         try:
             current_value = self.broker.getvalue()
-            
+
             # Ensure we have valid portfolio value and target ETFs
             if current_value <= 0 or len(target_etfs) == 0:
-                self.log(f"Invalid portfolio value ({current_value}) or no target ETFs ({len(target_etfs)})")
+                self.log(
+                    f"Invalid portfolio value ({current_value}) or no target ETFs ({len(target_etfs)})"
+                )
                 return
-                
+
             target_allocation = current_value / len(target_etfs)
 
             # Get current positions
@@ -380,14 +384,20 @@ class ETFMomentumStrategy(BaseStrategy):
 
                 try:
                     current_price = etf_data.close[0]
-                    target_shares = self.calculate_position_size(target_allocation, current_price)
+                    target_shares = self.calculate_position_size(
+                        target_allocation, current_price
+                    )
 
                     current_position = self.getposition(etf_data)
-                    current_shares = int(current_position.size)  # Ensure current shares is integer
+                    current_shares = int(
+                        current_position.size
+                    )  # Ensure current shares is integer
 
                     shares_diff = target_shares - current_shares
 
-                    if abs(shares_diff) >= 1:  # Minimum trade threshold of 1 whole share
+                    if (
+                        abs(shares_diff) >= 1
+                    ):  # Minimum trade threshold of 1 whole share
                         if shares_diff > 0:
                             self.log(f"Buying {shares_diff} shares of {etf_name}")
                             self.buy(data=etf_data, size=shares_diff)
@@ -396,7 +406,7 @@ class ETFMomentumStrategy(BaseStrategy):
                             self.sell(data=etf_data, size=abs(shares_diff))
                 except Exception as e:
                     self.log(f"Error processing {etf_name}: {str(e)}")
-                    
+
         except Exception as e:
             self.log(f"Critical error in _execute_rebalancing_trades: {str(e)}")
 

@@ -49,7 +49,7 @@ class StreakAnalyzer(bt.Analyzer):
             # Update totals
             self.rets["total_trades"] += 1
             self.rets["trade_results"].append(pnl)
-            
+
             # Add to total P&L (this will be finalized in stop())
             if pnl > 0:
                 self.rets["total_pnl"] += pnl
@@ -115,7 +115,7 @@ class StreakAnalyzer(bt.Analyzer):
         """Called at the end of the strategy to finalize calculations"""
         # Calculate total P&L
         self.rets["total_pnl"] = self.rets["gross_profit"] - self.rets["gross_loss"]
-        
+
         # Calculate averages and ratios
         if self.rets["winning_trades"] > 0:
             self.rets["avg_win"] = (
@@ -150,7 +150,7 @@ class StreakAnalyzer(bt.Analyzer):
                 "Winning Trades": self.rets["winning_trades"],
                 "Losing Trades": self.rets["losing_trades"],
                 "Even Trades": self.rets["even_trades"],
-                "Win Rate": f"{self.rets['win_rate']:.2f}%"
+                "Win Rate": f"{self.rets['win_rate']:.2f}%",
             },
             "Streak Analysis": {
                 "Max Winning Streak": self.rets["max_winning_streak"],
@@ -159,7 +159,7 @@ class StreakAnalyzer(bt.Analyzer):
                 "Current Streak Type": self.rets["current_streak_type"],
                 "Consecutive Wins": self.rets["consecutive_wins"],
                 "Consecutive Losses": self.rets["consecutive_losses"],
-                "Streak Changes": self.rets["streak_changes"]
+                "Streak Changes": self.rets["streak_changes"],
             },
             "P&L Analysis": {
                 "Total P&L": f"{self.rets['total_pnl']:.2f}",
@@ -168,8 +168,8 @@ class StreakAnalyzer(bt.Analyzer):
                 "Max Win": f"{self.rets['max_win']:.2f}",
                 "Max Loss": f"{self.rets['max_loss']:.2f}",
                 "Profit Factor": f"{self.rets['profit_factor']:.2f}",
-                "Average Trade P&L": f"{self.rets['avg_trade_pnl']:.2f}"
-            }
+                "Average Trade P&L": f"{self.rets['avg_trade_pnl']:.2f}",
+            },
         }
         return summary
 
