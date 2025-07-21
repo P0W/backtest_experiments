@@ -99,3 +99,24 @@ You are a highly competent **Senior Research Analyst and Algorithmic Trading Spe
 - Provide **stress testing** results under various market conditions
 
 When providing assistance, always maintain this persona of deep expertise, practical experience, and unwavering focus on delivering superior risk-adjusted returns in the Indian stock market context.
+
+## Project-Specific Guidelines
+
+### Development Environment
+- This is a **uv project** - use `uv` for all Python package management and execution
+- **DO NOT** use `pip`, `conda`, `pipenv`, or any other package managers unless explicitly requested
+- All commands should use `uv run` for Python execution (e.g., `uv run python script.py`)
+- Package dependencies are managed via `pyproject.toml` and `uv.lock`
+
+### Testing and Artifacts Policy
+- **DO NOT** create additional test files or artifacts for verification unless explicitly requested
+- If test files are created for debugging/verification purposes, **ALWAYS remove them** after completion
+- Keep the workspace clean and maintain only the core project files
+- Focus on enhancing existing code rather than creating temporary testing scaffolding
+- Use inline testing or direct verification within existing files when possible
+
+### Code Execution Guidelines
+- Always use `uv run` prefix for Python commands
+- Respect the existing project structure and file organization
+- Maintain consistency with the established codebase patterns
+- Ensure all changes integrate seamlessly with the existing backtesting framework

@@ -24,8 +24,8 @@ class StreakAnalyzer(bt.Analyzer):
             "current_streak_type": None,  # 'win', 'loss', or None
             "max_winning_streak": 0,
             "max_losing_streak": 0,
-            "consecutive_wins": 0,
-            "consecutive_losses": 0,
+            "consecutive_wins": 0,  # Current consecutive wins (same as current_streak if winning)
+            "consecutive_losses": 0,  # Current consecutive losses (same as current_streak if losing)
             "avg_win": 0.0,
             "avg_loss": 0.0,
             "max_win": 0.0,
@@ -36,6 +36,8 @@ class StreakAnalyzer(bt.Analyzer):
             "win_rate": 0.0,
             "trade_results": [],  # List of individual trade P&L
             "streak_changes": 0,  # Number of times streak type changed
+            "avg_trade_pnl": 0.0,  # Average P&L per trade
+            "total_pnl": 0.0,  # Total P&L from all trades
         }
 
     def notify_trade(self, trade):
@@ -47,6 +49,12 @@ class StreakAnalyzer(bt.Analyzer):
             # Update totals
             self.rets["total_trades"] += 1
             self.rets["trade_results"].append(pnl)
+            
+            # Add to total P&L (this will be finalized in stop())
+            if pnl > 0:
+                self.rets["total_pnl"] += pnl
+            elif pnl < 0:
+                self.rets["total_pnl"] += pnl  # pnl is already negative
 
             # Classify trade result
             if pnl > 0:
@@ -60,11 +68,13 @@ class StreakAnalyzer(bt.Analyzer):
                         self.rets["streak_changes"] += 1
                     self.rets["current_streak_type"] = "win"
                     self.rets["current_streak"] = 1
+                    # Reset consecutive losses when starting a winning streak
                     self.rets["consecutive_losses"] = 0
                 else:
                     self.rets["current_streak"] += 1
 
-                self.rets["consecutive_wins"] += 1
+                # Track consecutive wins (current winning streak length)
+                self.rets["consecutive_wins"] = self.rets["current_streak"]
                 self.rets["max_winning_streak"] = max(
                     self.rets["max_winning_streak"], self.rets["current_streak"]
                 )
@@ -80,11 +90,13 @@ class StreakAnalyzer(bt.Analyzer):
                         self.rets["streak_changes"] += 1
                     self.rets["current_streak_type"] = "loss"
                     self.rets["current_streak"] = 1
+                    # Reset consecutive wins when starting a losing streak
                     self.rets["consecutive_wins"] = 0
                 else:
                     self.rets["current_streak"] += 1
 
-                self.rets["consecutive_losses"] += 1
+                # Track consecutive losses (current losing streak length)
+                self.rets["consecutive_losses"] = self.rets["current_streak"]
                 self.rets["max_losing_streak"] = max(
                     self.rets["max_losing_streak"], self.rets["current_streak"]
                 )
@@ -101,6 +113,9 @@ class StreakAnalyzer(bt.Analyzer):
 
     def stop(self):
         """Called at the end of the strategy to finalize calculations"""
+        # Calculate total P&L
+        self.rets["total_pnl"] = self.rets["gross_profit"] - self.rets["gross_loss"]
+        
         # Calculate averages and ratios
         if self.rets["winning_trades"] > 0:
             self.rets["avg_win"] = (
@@ -114,6 +129,9 @@ class StreakAnalyzer(bt.Analyzer):
             self.rets["win_rate"] = (
                 self.rets["winning_trades"] / self.rets["total_trades"]
             ) * 100
+            self.rets["avg_trade_pnl"] = (
+                self.rets["total_pnl"] / self.rets["total_trades"]
+            )
 
         if self.rets["gross_loss"] > 0:
             self.rets["profit_factor"] = (
@@ -123,6 +141,37 @@ class StreakAnalyzer(bt.Analyzer):
     def get_analysis(self):
         """Return the analysis results"""
         return self.rets
+
+    def get_streak_summary(self):
+        """Return a formatted summary of streak statistics for debugging"""
+        summary = {
+            "Trade Summary": {
+                "Total Trades": self.rets["total_trades"],
+                "Winning Trades": self.rets["winning_trades"],
+                "Losing Trades": self.rets["losing_trades"],
+                "Even Trades": self.rets["even_trades"],
+                "Win Rate": f"{self.rets['win_rate']:.2f}%"
+            },
+            "Streak Analysis": {
+                "Max Winning Streak": self.rets["max_winning_streak"],
+                "Max Losing Streak": self.rets["max_losing_streak"],
+                "Current Streak": self.rets["current_streak"],
+                "Current Streak Type": self.rets["current_streak_type"],
+                "Consecutive Wins": self.rets["consecutive_wins"],
+                "Consecutive Losses": self.rets["consecutive_losses"],
+                "Streak Changes": self.rets["streak_changes"]
+            },
+            "P&L Analysis": {
+                "Total P&L": f"{self.rets['total_pnl']:.2f}",
+                "Average Win": f"{self.rets['avg_win']:.2f}",
+                "Average Loss": f"{self.rets['avg_loss']:.2f}",
+                "Max Win": f"{self.rets['max_win']:.2f}",
+                "Max Loss": f"{self.rets['max_loss']:.2f}",
+                "Profit Factor": f"{self.rets['profit_factor']:.2f}",
+                "Average Trade P&L": f"{self.rets['avg_trade_pnl']:.2f}"
+            }
+        }
+        return summary
 
 
 class DetailedTradeAnalyzer(bt.Analyzer):

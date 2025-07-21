@@ -87,50 +87,54 @@ class ETFMomentumStrategy(BaseStrategy):
         Called before next() when we don't have enough data for all indicators
         but can still achieve portfolio_size with available ETFs
         """
-        current_date = self.datas[0].datetime.date(0)
-        current_value = self.broker.getvalue()
+        try:
+            current_date = self.datas[0].datetime.date(0)
+            current_value = self.broker.getvalue()
 
-        # Track portfolio performance even during prenext
-        self.portfolio_values.append(current_value)
-        self.dates.append(current_date)
+            # Track portfolio performance even during prenext
+            self.portfolio_values.append(current_value)
+            self.dates.append(current_date)
 
-        # Check if we have enough ETFs with sufficient data to form a portfolio
-        available_etfs = []
+            # Check if we have enough ETFs with sufficient data to form a portfolio
+            available_etfs = []
 
-        for d in self.datas:
-            etf_name = d._name
-            indicators = self.indicators.get(etf_name, {})
+            for d in self.datas:
+                etf_name = d._name
+                indicators = self.indicators.get(etf_name, {})
 
-            # Check if we have at least short-term momentum data available
-            roc_short = indicators.get("roc_short")
-            sma = indicators.get("sma")
+                # Check if we have at least short-term momentum data available
+                roc_short = indicators.get("roc_short")
+                sma = indicators.get("sma")
 
-            if roc_short is not None and sma is not None:
-                try:
-                    # Check if indicators have valid data (not NaN)
-                    if (
-                        len(roc_short) > 0
-                        and len(sma) > 0
-                        and not np.isnan(roc_short[0])
-                        and not np.isnan(sma[0])
-                    ):
-                        available_etfs.append(etf_name)
-                except (IndexError, TypeError):
-                    continue
+                if roc_short is not None and sma is not None:
+                    try:
+                        # Check if indicators have valid data (not NaN)
+                        if (
+                            len(roc_short) > 0
+                            and len(sma) > 0
+                            and not np.isnan(roc_short[0])
+                            and not np.isnan(sma[0])
+                        ):
+                            available_etfs.append(etf_name)
+                    except (IndexError, TypeError):
+                        continue
 
-        self.log(f"Prenext: {len(available_etfs)} ETFs with sufficient data available")
+            self.log(f"Prenext: {len(available_etfs)} ETFs with sufficient data available")
 
-        # If we have enough ETFs to form a portfolio, execute strategy
-        if len(available_etfs) >= self.p.portfolio_size:
-            self.log(
-                f"Prenext: Sufficient ETFs available ({len(available_etfs)} >= {self.p.portfolio_size})"
-            )
-            self.execute_strategy()
-        else:
-            self.log(
-                f"Prenext: Waiting for more data ({len(available_etfs)} < {self.p.portfolio_size})"
-            )
-
+            # If we have enough ETFs to form a portfolio, execute strategy
+            if len(available_etfs) >= self.p.portfolio_size:
+                self.log(
+                    f"Prenext: Sufficient ETFs available ({len(available_etfs)} >= {self.p.portfolio_size})"
+                )
+                self.execute_strategy()
+            else:
+                self.log(
+                    f"Prenext: Waiting for more data ({len(available_etfs)} < {self.p.portfolio_size})"
+                )
+        except Exception as e:
+            self.log(f"Error in prenext(): {str(e)}")
+            # Continue to allow strategy to proceed even if prenext fails
+        
     def execute_strategy(self):
         """Execute ETF momentum strategy logic"""
         current_date = self.datas[0].datetime.date(0)
@@ -329,48 +333,65 @@ class ETFMomentumStrategy(BaseStrategy):
         Note: All trades are executed in whole shares only to comply with 
         Indian market regulations which don't allow fractional share trading.
         """
-        current_value = self.broker.getvalue()
-        target_allocation = current_value / len(target_etfs)
+        try:
+            current_value = self.broker.getvalue()
+            
+            # Ensure we have valid portfolio value and target ETFs
+            if current_value <= 0 or len(target_etfs) == 0:
+                self.log(f"Invalid portfolio value ({current_value}) or no target ETFs ({len(target_etfs)})")
+                return
+                
+            target_allocation = current_value / len(target_etfs)
 
-        # Get current positions
-        current_positions = {}
-        for d in self.datas:
-            position = self.getposition(d)
-            if position.size != 0:
-                current_positions[d._name] = {
-                    "size": position.size,
-                    "price": position.price,
-                    "value": position.size * d.close[0],
-                    "data": d,
-                }
+            # Get current positions
+            current_positions = {}
+            for d in self.datas:
+                position = self.getposition(d)
+                if position.size != 0:
+                    current_positions[d._name] = {
+                        "size": position.size,
+                        "price": position.price,
+                        "value": position.size * d.close[0],
+                        "data": d,
+                    }
 
-        # Exit positions not in target portfolio
-        for etf_name, pos_info in current_positions.items():
-            if etf_name not in target_etfs:
-                self.log(f"Exiting position in {etf_name}")
-                self.sell(data=pos_info["data"], size=pos_info["size"])
+            # Exit positions not in target portfolio
+            for etf_name, pos_info in current_positions.items():
+                if etf_name not in target_etfs:
+                    self.log(f"Exiting position in {etf_name}")
+                    try:
+                        self.sell(data=pos_info["data"], size=pos_info["size"])
+                    except Exception as e:
+                        self.log(f"Error selling {etf_name}: {str(e)}")
 
-        # Enter/adjust positions for target ETFs
-        for etf_name in target_etfs:
-            etf_data = self._get_data_by_name(etf_name)
-            if etf_data is None:
-                continue
+            # Enter/adjust positions for target ETFs
+            for etf_name in target_etfs:
+                etf_data = self._get_data_by_name(etf_name)
+                if etf_data is None:
+                    self.log(f"Warning: Could not find data feed for {etf_name}")
+                    continue
 
-            current_price = etf_data.close[0]
-            target_shares = self.calculate_position_size(target_allocation, current_price)
+                try:
+                    current_price = etf_data.close[0]
+                    target_shares = self.calculate_position_size(target_allocation, current_price)
 
-            current_position = self.getposition(etf_data)
-            current_shares = int(current_position.size)  # Ensure current shares is integer
+                    current_position = self.getposition(etf_data)
+                    current_shares = int(current_position.size)  # Ensure current shares is integer
 
-            shares_diff = target_shares - current_shares
+                    shares_diff = target_shares - current_shares
 
-            if abs(shares_diff) >= 1:  # Minimum trade threshold of 1 whole share
-                if shares_diff > 0:
-                    self.log(f"Buying {shares_diff} shares of {etf_name}")
-                    self.buy(data=etf_data, size=shares_diff)
-                else:
-                    self.log(f"Selling {abs(shares_diff)} shares of {etf_name}")
-                    self.sell(data=etf_data, size=abs(shares_diff))
+                    if abs(shares_diff) >= 1:  # Minimum trade threshold of 1 whole share
+                        if shares_diff > 0:
+                            self.log(f"Buying {shares_diff} shares of {etf_name}")
+                            self.buy(data=etf_data, size=shares_diff)
+                        else:
+                            self.log(f"Selling {abs(shares_diff)} shares of {etf_name}")
+                            self.sell(data=etf_data, size=abs(shares_diff))
+                except Exception as e:
+                    self.log(f"Error processing {etf_name}: {str(e)}")
+                    
+        except Exception as e:
+            self.log(f"Critical error in _execute_rebalancing_trades: {str(e)}")
 
     def _check_exit_conditions(self):
         """Check if any positions should be exited based on momentum deterioration"""
