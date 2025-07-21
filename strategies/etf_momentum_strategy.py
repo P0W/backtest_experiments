@@ -134,6 +134,13 @@ class ETFMomentumStrategy(BaseStrategy):
         except Exception as e:
             self.log(f"Error in prenext(): {str(e)}")
             # Continue to allow strategy to proceed even if prenext fails
+
+    def next(self):
+        """
+        Main next method called by backtrader for each bar
+        """
+        # Call parent next() method to track portfolio performance
+        super().next()
         
     def execute_strategy(self):
         """Execute ETF momentum strategy logic"""
@@ -329,8 +336,8 @@ class ETFMomentumStrategy(BaseStrategy):
     def _execute_rebalancing_trades(self, target_etfs):
         """
         Execute trades to rebalance to target portfolio
-        
-        Note: All trades are executed in whole shares only to comply with 
+
+        Note: All trades are executed in whole shares only to comply with
         Indian market regulations which don't allow fractional share trading.
         """
         try:
