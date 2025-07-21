@@ -101,8 +101,10 @@ class NiftyShopStrategy(BaseStrategy):
     def get_position_size(self, price):
         """Calculate position size based on fixed amount"""
         available_cash = self.broker.getcash()
-        max_size = self.params.fixed_size // price
-        affordable_size = (available_cash * 0.9) // price  # Keep 10% cash buffer
+        
+        # Use base strategy method for position sizing
+        max_size = self.calculate_position_size(self.params.fixed_size, price)
+        affordable_size = self.calculate_position_size(available_cash * 0.9, price)  # Keep 10% cash buffer
         return min(max_size, affordable_size, 500)  # Cap at 500 shares max
 
     def get_data_feed(self, symbol):

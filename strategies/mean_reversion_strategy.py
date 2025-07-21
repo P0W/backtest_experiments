@@ -95,12 +95,12 @@ class PortfolioMeanReversionStrategy(BaseStrategy):
         available_cash = self.broker.get_cash()
         risk_amount = available_cash * self.params.risk_per_trade
 
-        # Simple position sizing based on price
+        # Use base strategy method for position sizing
         current_price = data.close[0]
         if current_price <= 0:
             return 0
 
-        size = int(risk_amount / current_price)
+        size = self.calculate_position_size(risk_amount, current_price)
         return max(size, 1)  # Minimum size of 1
 
     def should_enter_long(self, data):

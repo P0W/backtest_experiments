@@ -323,7 +323,12 @@ class ETFMomentumStrategy(BaseStrategy):
         return eligible_etfs
 
     def _execute_rebalancing_trades(self, target_etfs):
-        """Execute trades to rebalance to target portfolio"""
+        """
+        Execute trades to rebalance to target portfolio
+        
+        Note: All trades are executed in whole shares only to comply with 
+        Indian market regulations which don't allow fractional share trading.
+        """
         current_value = self.broker.getvalue()
         target_allocation = current_value / len(target_etfs)
 
@@ -352,19 +357,19 @@ class ETFMomentumStrategy(BaseStrategy):
                 continue
 
             current_price = etf_data.close[0]
-            target_shares = target_allocation / current_price
+            target_shares = self.calculate_position_size(target_allocation, current_price)
 
             current_position = self.getposition(etf_data)
-            current_shares = current_position.size
+            current_shares = int(current_position.size)  # Ensure current shares is integer
 
             shares_diff = target_shares - current_shares
 
-            if abs(shares_diff) > 0.01:  # Minimum trade threshold
+            if abs(shares_diff) >= 1:  # Minimum trade threshold of 1 whole share
                 if shares_diff > 0:
-                    self.log(f"Buying {shares_diff:.2f} shares of {etf_name}")
+                    self.log(f"Buying {shares_diff} shares of {etf_name}")
                     self.buy(data=etf_data, size=shares_diff)
                 else:
-                    self.log(f"Selling {abs(shares_diff):.2f} shares of {etf_name}")
+                    self.log(f"Selling {abs(shares_diff)} shares of {etf_name}")
                     self.sell(data=etf_data, size=abs(shares_diff))
 
     def _check_exit_conditions(self):

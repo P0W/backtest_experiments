@@ -212,15 +212,17 @@ class PairsStrategy(BaseStrategy):
                     self.atr1[0] if len(self.atr1) > 0 else self.data1.close[0] * 0.02
                 )
 
-                # Risk per trade based sizing
+                # Risk per trade based sizing using base strategy method
                 risk_amount = available_cash * self.p.risk_per_trade
-                size0 = int(risk_amount / (atr0_val * 2))  # Half risk on each leg
-                size1 = int(risk_amount / (atr1_val * 2))
+                half_risk = risk_amount / 2  # Split risk between two legs
+                size0 = self.calculate_position_size(half_risk, atr0_val)
+                size1 = self.calculate_position_size(half_risk, atr1_val)
             else:
-                # Simple equal dollar sizing
+                # Simple equal dollar sizing using base strategy method
                 target_investment = available_cash * 0.4  # Use 40% of available cash
-                size0 = int(target_investment / (2 * self.data0.close[0]))
-                size1 = int(target_investment / (2 * self.data1.close[0]))
+                half_investment = target_investment / 2  # Split between two assets
+                size0 = self.calculate_position_size(half_investment, self.data0.close[0])
+                size1 = self.calculate_position_size(half_investment, self.data1.close[0])
 
             # Minimum size check
             size0 = max(size0, self.p.base_size)

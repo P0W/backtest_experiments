@@ -183,7 +183,7 @@ class StatisticalTrendStrategy(BaseStrategy):
 
         return candidates
 
-    def calculate_position_size(self, data):
+    def calculate_atr_position_size(self, data):
         """Calculate position size based on ATR and risk management"""
         try:
             indicators = self.indicators[data._name]
@@ -200,7 +200,7 @@ class StatisticalTrendStrategy(BaseStrategy):
             stop_distance = 0.75 * atr
 
             if stop_distance > 0:
-                size = int(risk_amount / stop_distance)
+                size = self.calculate_position_size(risk_amount, stop_distance)
                 return max(size, 0)
             else:
                 return 0
@@ -264,7 +264,7 @@ class StatisticalTrendStrategy(BaseStrategy):
             if self.getposition(data).size != 0:
                 continue
 
-            size = self.calculate_position_size(data)
+            size = self.calculate_atr_position_size(data)
 
             if size > 0:
                 if direction > 0:  # Long

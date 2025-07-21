@@ -304,7 +304,7 @@ class PMVMomentumStrategy(BaseStrategy):
                 )
                 continue
 
-            size = max(1, int(position_value / d.close[0]))
+            size = max(1, self.calculate_position_size(position_value, d.close[0]))
             cost = size * d.close[0]
 
             if cost <= available_cash:
