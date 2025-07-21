@@ -331,7 +331,9 @@ class MomentumTrendStrategy(BaseStrategy):
                     available_cash = self.broker.get_cash()
                     if available_cash > 0 and d.close[0] > 0:
                         allocation_per_stock = available_cash / self.p.top_n_stocks
-                        size = self.calculate_position_size(allocation_per_stock, d.close[0])
+                        size = self.calculate_position_size(
+                            allocation_per_stock, d.close[0]
+                        )
                         if size > 0:
                             self.log(
                                 f"Buying {size} shares of {d._name} at {d.close[0]:.2f}, cash available: {available_cash:.2f}"

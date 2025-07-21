@@ -325,8 +325,8 @@ class ETFMomentumStrategy(BaseStrategy):
     def _execute_rebalancing_trades(self, target_etfs):
         """
         Execute trades to rebalance to target portfolio
-        
-        Note: All trades are executed in whole shares only to comply with 
+
+        Note: All trades are executed in whole shares only to comply with
         Indian market regulations which don't allow fractional share trading.
         """
         current_value = self.broker.getvalue()
@@ -357,10 +357,14 @@ class ETFMomentumStrategy(BaseStrategy):
                 continue
 
             current_price = etf_data.close[0]
-            target_shares = self.calculate_position_size(target_allocation, current_price)
+            target_shares = self.calculate_position_size(
+                target_allocation, current_price
+            )
 
             current_position = self.getposition(etf_data)
-            current_shares = int(current_position.size)  # Ensure current shares is integer
+            current_shares = int(
+                current_position.size
+            )  # Ensure current shares is integer
 
             shares_diff = target_shares - current_shares
 

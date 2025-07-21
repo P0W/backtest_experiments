@@ -221,8 +221,12 @@ class PairsStrategy(BaseStrategy):
                 # Simple equal dollar sizing using base strategy method
                 target_investment = available_cash * 0.4  # Use 40% of available cash
                 half_investment = target_investment / 2  # Split between two assets
-                size0 = self.calculate_position_size(half_investment, self.data0.close[0])
-                size1 = self.calculate_position_size(half_investment, self.data1.close[0])
+                size0 = self.calculate_position_size(
+                    half_investment, self.data0.close[0]
+                )
+                size1 = self.calculate_position_size(
+                    half_investment, self.data1.close[0]
+                )
 
             # Minimum size check
             size0 = max(size0, self.p.base_size)

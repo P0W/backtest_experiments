@@ -221,26 +221,28 @@ class BaseStrategy(bt.Strategy):
             return float("inf") if self.total_profit > 0 else 0.0
         return self.total_profit / self.total_loss
 
-    def calculate_position_size(self, allocation_amount: float, current_price: float) -> int:
+    def calculate_position_size(
+        self, allocation_amount: float, current_price: float
+    ) -> int:
         """
         Calculate position size in whole shares for Indian market compliance
-        
+
         Args:
             allocation_amount: The amount to allocate for this position
             current_price: Current price per share
-            
+
         Returns:
             int: Number of whole shares to buy (rounded down)
-            
+
         Note:
             Indian markets don't allow fractional share trading, so this method
             ensures all position sizes are whole numbers by rounding down.
-            
+
             This method is used by all strategies to maintain consistency and
             compliance across the entire backtesting framework.
         """
         if current_price <= 0 or allocation_amount <= 0:
             return 0
-        
+
         shares_float = allocation_amount / current_price
         return int(shares_float)  # Round down to ensure whole shares
