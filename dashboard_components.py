@@ -5,7 +5,6 @@ This module contains individual chart creation methods for the portfolio dashboa
 following the Single Responsibility Principle for better maintainability.
 """
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
