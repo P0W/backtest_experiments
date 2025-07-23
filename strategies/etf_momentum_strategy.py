@@ -59,29 +59,41 @@ class ETFMomentumStrategy(BaseStrategy):
             self.log(f"Setting up indicators for ETF: {etf_name}")
 
             try:
+                # Use BackTrader indicators for efficiency and accuracy
                 self.indicators[etf_name] = {
-                    # Price indicators
                     "sma": bt.ind.SimpleMovingAverage(
                         d.close, period=self.p.moving_avg_period
                     ),
-                    # Momentum indicators
+                    "ema": bt.ind.ExponentialMovingAverage(
+                        d.close, period=self.p.moving_avg_period
+                    ),
+                    # Volume indicators
+                    "volume_sma_30": bt.ind.SimpleMovingAverage(d.volume, period=30),
+                    # Returns/momentum indicators
                     "roc_long": bt.ind.RateOfChange(
                         d.close, period=self.p.long_term_period
                     ),
                     "roc_short": bt.ind.RateOfChange(
                         d.close, period=self.p.short_term_period
                     ),
-                    # Volume indicator
-                    "volume_sma": bt.ind.SimpleMovingAverage(d.volume, period=20),
+                    # High tracking for retracement filter
+                    "highest": bt.ind.Highest(d.close, period=self.p.long_term_period),
+                    # Volatility tracking (using standard deviation of returns)
+                    "volatility": bt.ind.StandardDeviation(
+                        bt.ind.PercentChange(d.close, period=1), period=30
+                    ),
                 }
                 self.log(f"Successfully created indicators for {etf_name}")
             except Exception as e:
                 self.log(f"ERROR creating indicators for {etf_name}: {str(e)}")
                 self.indicators[etf_name] = {
                     "sma": None,
+                    "ema": None,
+                    "volume_sma_30": None,
                     "roc_long": None,
                     "roc_short": None,
-                    "volume_sma": None,
+                    "highest": None,
+                    "volatility": None,
                 }
 
         self.log(f"Indicators initialized for {len(self.indicators)} ETFs")
@@ -104,21 +116,14 @@ class ETFMomentumStrategy(BaseStrategy):
 
             for d in self.datas:
                 etf_name = d._name
-                indicators = self.indicators.get(etf_name, {})
 
-                # Check if we have at least short-term momentum data available
-                roc_short = indicators.get("roc_short")
-                sma = indicators.get("sma")
-
-                if roc_short is not None and sma is not None:
+                # Check if we have sufficient data using manual calculation
+                # (equivalent to checking if indicators have valid data)
+                if self._has_sufficient_data(d):
                     try:
-                        # Check if indicators have valid data (not NaN)
-                        if (
-                            len(roc_short) > 0
-                            and len(sma) > 0
-                            and not np.isnan(roc_short[0])
-                            and not np.isnan(sma[0])
-                        ):
+                        # Additional check for valid price data
+                        current_price = d.close[0]
+                        if not np.isnan(current_price) and current_price > 0:
                             available_etfs.append(etf_name)
                     except (IndexError, TypeError):
                         continue
@@ -279,96 +284,89 @@ class ETFMomentumStrategy(BaseStrategy):
             self.log(f"Error in rebalancing: {str(e)}")
 
     def _calculate_momentum_scores(self):
-        """Calculate momentum scores for all ETFs"""
+        """
+        Calculate momentum scores for all ETFs using MomentumCalculator-equivalent logic
+        """
         momentum_scores = {}
         total_etfs = len(self.datas)
+
+        # Calculate adaptive weights based on market volatility (MomentumCalculator style)
+        market_volatility = self._calculate_market_volatility()
+        long_weight, short_weight = self._get_adaptive_momentum_weights(market_volatility)
 
         for d in self.datas:
             etf_name = d._name
 
             try:
-                # Get indicators first
-                indicators = self.indicators.get(etf_name, {})
-                roc_long = indicators.get("roc_long")
-                roc_short = indicators.get("roc_short")
-                sma = indicators.get("sma")
-                volume_sma = indicators.get("volume_sma")
-
-                # Check if minimum required indicators exist (short-term momentum and SMA)
-                if roc_short is None or sma is None:
-                    self.log(f"{etf_name}: Essential indicators not initialized")
+                # Check minimum data points requirement (MomentumCalculator equivalent)
+                if not self._has_sufficient_data(d):
+                    self.log(f"{etf_name}: Insufficient data points")
                     continue
 
-                # Get current values and check if they're valid
+                # Get current values using BackTrader indicators
                 try:
                     current_price = d.close[0]
-                    short_momentum = roc_short[0] / 100.0
-                    sma_value = sma[0]
+                    
+                    # Get indicators for this ETF
+                    indicators = self.indicators.get(etf_name, {})
+                    roc_long = indicators.get("roc_long")
+                    roc_short = indicators.get("roc_short")
+                    volume_sma_30 = indicators.get("volume_sma_30")
+                    
+                    # Check if indicators are available and have data
+                    if (roc_long is None or roc_short is None or 
+                        len(roc_long) == 0 or len(roc_short) == 0):
+                        continue
+                    
+                    # Get returns from BackTrader indicators (convert from percentage)
+                    long_return = roc_long[0] / 100.0
+                    short_return = roc_short[0] / 100.0
+                    
+                    # Get volume data
                     current_volume = d.volume[0] if hasattr(d, "volume") else 1000000
-                    avg_volume = (
-                        volume_sma[0]
-                        if volume_sma and len(volume_sma) > 0
+                    avg_volume_30day = (
+                        volume_sma_30[0] if volume_sma_30 and len(volume_sma_30) > 0 
                         else current_volume
                     )
 
-                    # Try to get long-term momentum, but don't fail if not available
-                    long_momentum = None
-                    if roc_long is not None:
-                        try:
-                            long_momentum_val = roc_long[0] / 100.0
-                            if not np.isnan(long_momentum_val):
-                                long_momentum = long_momentum_val
-                        except (IndexError, TypeError):
-                            pass
-
-                    # Skip if essential values are NaN or invalid
+                    # Skip if essential values are invalid
                     if (
-                        np.isnan(short_momentum)
-                        or np.isnan(current_price)
-                        or np.isnan(sma_value)
+                        np.isnan(long_return) or np.isnan(short_return) or
+                        np.isnan(current_price)
                     ):
                         continue
 
                 except (IndexError, TypeError):
-                    # Not enough data yet for indicators
                     continue
 
-                # Calculate composite momentum score
-                if long_momentum is not None:
-                    # Full momentum calculation when long-term data is available
-                    momentum_score = 0.7 * long_momentum + 0.3 * short_momentum
-                    self.log(
-                        f"{etf_name}: Full momentum calculation - "
-                        f"long={long_momentum:.4f}, short={short_momentum:.4f}"
-                    )
+                # Calculate weighted momentum score (MomentumCalculator style)
+                if short_return is not None:
+                    momentum_score = long_return * long_weight + short_return * short_weight
                 else:
-                    # Use only short-term momentum when long-term isn't available yet
-                    momentum_score = short_momentum
-                    long_momentum = 0.0  # Set to 0 for logging consistency
-                    self.log(
-                        f"{etf_name}: Short-term only momentum calculation - "
-                        f"short={short_momentum:.4f} (long-term data not ready)"
-                    )
+                    momentum_score = long_return
 
-                # Apply trend filter (price above moving average)
-                trend_filter = current_price > sma_value
+                # Apply MomentumCalculator-style filters
+                filters_passed = self._apply_momentum_filters(d, current_price, avg_volume_30day)
+                
+                if not filters_passed:
+                    self.log(f"{etf_name}: Failed momentum filters")
+                    continue
 
                 momentum_scores[etf_name] = {
                     "score": momentum_score,
-                    "long_momentum": long_momentum,
-                    "short_momentum": short_momentum,
+                    "long_momentum": long_return,
+                    "short_momentum": short_return,
                     "current_price": current_price,
-                    "sma": sma_value,
-                    "trend_filter": trend_filter,
+                    "sma": current_price,  # Not needed for MomentumCalculator approach
+                    "trend_filter": filters_passed,
                     "volume": current_volume,
-                    "avg_volume": avg_volume,
-                    "has_long_term_data": long_momentum is not None
-                    and long_momentum != 0.0,
+                    "avg_volume": avg_volume_30day,
+                    "has_long_term_data": long_return is not None,
                 }
 
                 self.log(
-                    f"{etf_name}: momentum={momentum_score:.4f}, "
-                    f"trend_ok={trend_filter}"
+                    f"{etf_name}: momentum={momentum_score:.4f} (weights: {long_weight:.1f}/{short_weight:.1f}), "
+                    f"long={long_return:.4f}, short={short_return:.4f}"
                 )
 
             except Exception as e:
@@ -380,26 +378,168 @@ class ETFMomentumStrategy(BaseStrategy):
         )
         return momentum_scores
 
+    def _calculate_market_volatility(self):
+        """Calculate market volatility using BackTrader indicators"""
+        try:
+            # Use first ETF's volatility indicator as market proxy
+            market_data = self.datas[0]
+            etf_name = market_data._name
+            indicators = self.indicators.get(etf_name, {})
+            volatility_indicator = indicators.get("volatility")
+            
+            if volatility_indicator and len(volatility_indicator) > 0:
+                # BackTrader StandardDeviation gives daily volatility, annualize it
+                daily_vol = volatility_indicator[0]
+                if not np.isnan(daily_vol):
+                    return daily_vol * np.sqrt(252)  # Annualized volatility
+                    
+            return 0.2  # Default volatility if indicator not available
+        except:
+            self.log("Error calculating market volatility")
+            return 0.2
+
+    def _get_adaptive_momentum_weights(self, market_volatility):
+        """Get adaptive momentum weights based on market volatility (MomentumCalculator style)"""
+        # Default weights (can be derived from exit_rank_buffer parameter)
+        base_long_weight = 0.7
+        base_short_weight = 0.3
+        
+        # Adaptive logic: if volatility > 20%, increase short-term weight
+        if market_volatility > 0.2:
+            # Higher volatility -> more short-term focus
+            long_weight = 0.5
+            short_weight = 0.5
+            self.log(f"High volatility ({market_volatility:.2%}) - using balanced weights")
+        else:
+            # Normal volatility -> standard weights
+            long_weight = base_long_weight
+            short_weight = base_short_weight
+            
+        return long_weight, short_weight
+
+    def _has_sufficient_data(self, data):
+        """Check if ETF has sufficient data points"""
+        min_data_points = max(self.p.long_term_period, 50)  # Minimum 50 data points
+        return len(data) >= min_data_points
+
+    def _apply_momentum_filters(self, data, current_price, avg_volume_30day):
+        """Apply MomentumCalculator-style filters using BackTrader indicators"""
+        try:
+            # 1. Retracement filter (using BackTrader Highest indicator)
+            if not self._passes_retracement_filter(data, current_price):
+                return False
+
+            # 2. Moving average filter (using BackTrader EMA indicator)
+            if not self._passes_ema_filter(data, current_price):
+                return False
+
+            # 3. Volume filter (using BackTrader volume SMA indicator)
+            if not self._passes_volume_filter(data, avg_volume_30day):
+                return False
+
+            return True
+        except:
+            return False
+
+    def _passes_retracement_filter(self, data, current_price):
+        """Check if ETF passes retracement filter using BackTrader Highest indicator"""
+        try:
+            # Use existing parameters: if price has fallen more than 25% from recent high, skip
+            max_retracement = 0.25  # 25% maximum retracement
+            
+            # Get the Highest indicator for this ETF
+            indicators = self.indicators.get(data._name, {})
+            highest_indicator = indicators.get("highest")
+            
+            if highest_indicator is None or len(highest_indicator) == 0:
+                return True  # Pass filter if indicator not available
+            
+            try:
+                peak_price = highest_indicator[0]
+                if np.isnan(peak_price) or peak_price <= 0:
+                    return True
+                
+                retracement = (peak_price - current_price) / peak_price
+                passed = retracement <= max_retracement
+                
+                if not passed:
+                    self.log(f"{data._name}: Retracement filter failed - {retracement:.2%} > {max_retracement:.2%}")
+                
+                return passed
+            except (IndexError, TypeError):
+                return True
+                
+        except:
+            return True
+
+    def _passes_ema_filter(self, data, current_price):
+        """Check if current price is above EMA (using BackTrader EMA indicator)"""
+        try:
+            # Get EMA indicator for this ETF
+            indicators = self.indicators.get(data._name, {})
+            ema_indicator = indicators.get("ema")
+            
+            if ema_indicator is None or len(ema_indicator) == 0:
+                # If EMA not available, pass the filter
+                return True
+            
+            try:
+                ema_value = ema_indicator[0]
+                if np.isnan(ema_value):
+                    return True
+                
+                passed = current_price > ema_value
+                if not passed:
+                    self.log(f"{data._name}: EMA filter failed - {current_price:.2f} <= {ema_value:.2f}")
+                
+                return passed
+            except (IndexError, TypeError):
+                # Not enough data for EMA yet
+                return True
+                
+        except Exception:
+            return True
+
+    def _passes_volume_filter(self, data, avg_volume_30day=None):
+        """Check if average volume meets minimum requirement using BackTrader indicator"""
+        try:
+            # If avg_volume_30day is provided (from momentum calculation), use it
+            if avg_volume_30day is not None:
+                return avg_volume_30day >= self.p.volume_threshold
+            
+            # Otherwise, get volume from BackTrader indicator
+            indicators = self.indicators.get(data._name, {})
+            volume_sma_30 = indicators.get("volume_sma_30")
+            
+            if volume_sma_30 and len(volume_sma_30) > 0:
+                avg_volume = volume_sma_30[0]
+                if not np.isnan(avg_volume):
+                    return avg_volume >= self.p.volume_threshold
+            
+            # Fallback to current volume if indicator not available
+            current_volume = data.volume[0] if hasattr(data, "volume") else 1000000
+            return current_volume >= self.p.volume_threshold
+            
+        except:
+            return True
+
     def _filter_eligible_etfs(self, momentum_scores):
-        """Filter ETFs based on momentum and liquidity criteria"""
+        """Filter ETFs based on momentum and liquidity criteria (MomentumCalculator style)"""
         eligible_etfs = []
 
         for etf_name, data in momentum_scores.items():
-            # Apply filters
+            # Apply filters (all filtering already done in momentum calculation)
             meets_momentum_threshold = data["score"] >= self.p.min_momentum_threshold
-            meets_trend_filter = data["trend_filter"]  # Re-enabled trend filter
-            meets_volume_threshold = data["avg_volume"] >= self.p.volume_threshold
-
-            if (
-                meets_momentum_threshold
-                and meets_trend_filter
-                and meets_volume_threshold
-            ):
+            
+            # All other filters (trend, retracement, volume) are already applied in _calculate_momentum_scores
+            # This matches MomentumCalculator's approach where filtering is done during calculation
+            
+            if meets_momentum_threshold:
                 eligible_etfs.append(
                     {"name": etf_name, "momentum_score": data["score"], "data": data}
                 )
 
-        # Sort by momentum score (descending)
+        # Sort by momentum score (descending) - same as MomentumCalculator
         eligible_etfs.sort(key=lambda x: x["momentum_score"], reverse=True)
 
         self.log(
