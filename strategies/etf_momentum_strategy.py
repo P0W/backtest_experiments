@@ -394,8 +394,8 @@ class ETFMomentumStrategy(BaseStrategy):
                     return daily_vol * np.sqrt(252)  # Annualized volatility
                     
             return 0.2  # Default volatility if indicator not available
-        except:
-            self.log("Error calculating market volatility")
+        except Exception as e:
+            self.log(f"Error calculating market volatility: {str(e)}")
             return 0.2
 
     def _get_adaptive_momentum_weights(self, market_volatility):
@@ -438,7 +438,8 @@ class ETFMomentumStrategy(BaseStrategy):
                 return False
 
             return True
-        except:
+        except Exception as e:
+            self.log(f"Error in momentum filters: {str(e)}")
             return False
 
     def _passes_retracement_filter(self, data, current_price):
@@ -469,7 +470,8 @@ class ETFMomentumStrategy(BaseStrategy):
             except (IndexError, TypeError):
                 return True
                 
-        except:
+        except Exception as e:
+            self.log(f"Error in retracement filter for {data._name}: {str(e)}")
             return True
 
     def _passes_ema_filter(self, data, current_price):
@@ -520,7 +522,8 @@ class ETFMomentumStrategy(BaseStrategy):
             current_volume = data.volume[0] if hasattr(data, "volume") else 1000000
             return current_volume >= self.p.volume_threshold
             
-        except:
+        except Exception as e:
+            self.log(f"Error in volume filter for {data._name}: {str(e)}")
             return True
 
     def _filter_eligible_etfs(self, momentum_scores):
