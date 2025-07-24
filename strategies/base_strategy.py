@@ -10,7 +10,9 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import backtrader as bt
+import logging
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ExperimentResult:
@@ -167,7 +169,7 @@ class BaseStrategy(bt.Strategy):
         """
         if self.params.printlog:
             dt = dt or self.datas[0].datetime.date(0)
-            print(f"{dt.isoformat()}: {txt}")
+            logger.info(f"{dt.isoformat()} {txt}")
 
     def __init__(self):
         super().__init__()

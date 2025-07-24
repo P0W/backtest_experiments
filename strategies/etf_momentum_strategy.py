@@ -31,10 +31,6 @@ class ETFMomentumStrategy(BaseStrategy):
             20,
         ),  # Short-term momentum period (days) - further reduced
         ("moving_avg_period", 20),  # Moving average filter period - reduced
-        (
-            "exit_rank_buffer",
-            2.0,
-        ),  # Exit multiplier (exit if rank > portfolio_size * buffer)
         ("min_momentum_threshold", 0.0),  # Minimum momentum to consider
         ("volume_threshold", 100000),  # Minimum daily volume threshold
         ("use_threshold_rebalancing", False),  # Enable threshold-based rebalancing
@@ -162,9 +158,6 @@ class ETFMomentumStrategy(BaseStrategy):
             self.log(f"Rebalancing portfolio on {current_date}")
             self._rebalance_portfolio(current_date)
             self.last_rebalance_date = current_date
-
-        # Check exit conditions for existing positions
-        self._check_exit_conditions()
 
     def _should_rebalance(self, current_date):
         """Determine if it's time to rebalance the portfolio"""
@@ -689,12 +682,6 @@ class ETFMomentumStrategy(BaseStrategy):
         except Exception as e:
             self.log(f"Critical error in _execute_rebalancing_trades: {str(e)}")
 
-    def _check_exit_conditions(self):
-        """Check if any positions should be exited based on momentum deterioration"""
-        # For now, rely on periodic rebalancing
-        # Could add stop-loss or momentum deterioration checks here
-        pass
-
     def _get_data_by_name(self, etf_name):
         """Get data feed by ETF name"""
         for d in self.datas:
@@ -721,7 +708,6 @@ class ETFMomentumConfig(StrategyConfig):
             "long_term_period": [100, 180, 200],  # 3 options
             "short_term_period": [30, 60, 90],  # 3 options
             "moving_avg_period": [20, 50, 100],  # 3 options
-            "exit_rank_buffer": [1.5, 2.0, 2.5],  # 3 options
             "min_momentum_threshold": [0.0, 0.05, 0.10],  # 3 options
             "volume_threshold": [100000, 200000],  # 2 options
             "use_threshold_rebalancing": [False, True],  # 2 options
@@ -742,7 +728,6 @@ class ETFMomentumConfig(StrategyConfig):
             "long_term_period": [60, 90, 120],  # 3 options (Shorter for intraday)
             "short_term_period": [15, 30, 45],  # 3 options
             "moving_avg_period": [10, 20, 30],  # 3 options
-            "exit_rank_buffer": [1.5, 2.0, 2.5],  # 3 options
             "min_momentum_threshold": [0.0, 0.05, 0.10],  # 3 options
             "volume_threshold": [100000, 200000],  # 2 options
             "use_threshold_rebalancing": [False, True],  # 2 options
@@ -760,7 +745,6 @@ class ETFMomentumConfig(StrategyConfig):
             "long_term_period": 200,  # Reduced from 126 for earlier start
             "short_term_period": 90,  # Reduced from 30
             "moving_avg_period": 20,  # Reduced from 25
-            "exit_rank_buffer": 1.5,
             "min_momentum_threshold": 0.0,
             "volume_threshold": 200000,
             "use_threshold_rebalancing": False,
@@ -788,10 +772,6 @@ class ETFMomentumConfig(StrategyConfig):
         # Moving average period should be reasonable
         ma_period = params.get("moving_avg_period", 0)
         if ma_period <= 0 or ma_period > params.get("short_term_period", 100):
-            return False
-
-        # Exit rank buffer should be >= 1.0
-        if params.get("exit_rank_buffer", 0) < 1.0:
             return False
 
         # Volume threshold should be positive
