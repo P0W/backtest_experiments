@@ -515,8 +515,9 @@ def main():
 if __name__ == "__main__":
     # Initialize logging first
     from utils import setup_logger
+
     logger = setup_logger()
-    
+
     print("🚀 Unified Trading Strategies Runner")
     print("=" * 50)
 
