@@ -67,7 +67,9 @@ def get_default_stocks(universe="nifty50", sector=None):
         try:
             return get_sector_stocks(sector)
         except ValueError:
-            print(f"⚠️ Unknown sector '{sector}', falling back to universe '{universe}'")
+            print(
+                f"⚠️ Unknown sector '{sector}', falling back to universe '{universe}'"
+            )
 
     try:
         return get_nifty_universe(universe)
