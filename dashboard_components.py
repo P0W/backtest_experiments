@@ -78,7 +78,7 @@ class DashboardComponents:
         if len(portfolio_df) > 30:  # Only create heatmap if we have enough data
             monthly_returns = (
                 portfolio_df["returns"]
-                .resample("M")
+                .resample("ME")
                 .apply(lambda x: (1 + x).prod() - 1)
                 * 100
             )
