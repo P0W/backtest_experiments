@@ -432,6 +432,10 @@ class MarketDataLoader:
                 actions=False,
             )
 
+            # Create a copy to avoid "output array is read-only" errors
+            # This is required due to pandas copy-on-write semantics with yfinance
+            df = df.copy()
+
             if df.empty:
                 if self.verbose:
                     self.logger.warning(f"{symbol}: yfinance returned empty data")
