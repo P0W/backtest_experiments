@@ -277,16 +277,23 @@ class MarketDataLoader:
                     cached_end = pd.Timestamp(cached_meta["index"].max()).tz_localize(
                         None
                     )
-                    start_ts = start_ts.tz_localize(None) if start_ts.tz else start_ts
-                    end_ts = end_ts.tz_localize(None) if end_ts.tz else end_ts
+                    # Normalize timestamps to date-only for comparison
+                    # This ensures we compare dates properly regardless of time component
+                    start_ts_norm = (
+                        start_ts.tz_localize(None) if start_ts.tz else start_ts
+                    ).normalize()
+                    end_ts_norm = (
+                        end_ts.tz_localize(None) if end_ts.tz else end_ts
+                    ).normalize()
+                    cached_end_norm = cached_end.normalize()
 
-                    # Cache hit
-                    if cached_start <= start_ts and cached_end >= end_ts:
+                    # Cache hit: cached data covers the requested date range
+                    if cached_start <= start_ts_norm and cached_end_norm >= end_ts_norm:
                         df = pq.read_table(
                             pq_file,
                             filters=[
-                                ("index", ">=", start_ts),
-                                ("index", "<=", end_ts),
+                                ("index", ">=", start_ts_norm),
+                                ("index", "<=", end_ts_norm),
                             ],
                         ).to_pandas()
 
@@ -294,20 +301,28 @@ class MarketDataLoader:
                             df = df.set_index("index")
                             return self._standardise(df)
 
-                    # Cache extension needed
+                    # Cache extension needed: download new data and merge
                     else:
+                        if self.verbose:
+                            self.logger.info(
+                                f"{symbol}: Cache extends from {cached_start.date()} to "
+                                f"{cached_end.date()}, need data up to {end_ts_norm.date()}"
+                            )
                         return self._extend_cache(
                             symbol,
                             pq_file,
-                            start_ts,
-                            end_ts,
+                            start_ts_norm,
+                            end_ts_norm,
                             interval,
                             cached_start,
                             cached_end,
                         )
 
-            except Exception:
-                pass  # Fall through to fresh download
+            except Exception as e:
+                if self.verbose:
+                    self.logger.warning(
+                        f"{symbol}: Cache read error, will re-download: {e}"
+                    )
 
         # Fresh download
         return self._download_and_cache(symbol, pq_file, start_ts, end_ts, interval)
@@ -324,22 +339,53 @@ class MarketDataLoader:
     ) -> pd.DataFrame:
         """Extend existing cache with only missing data."""
         existing_df = pq.read_table(pq_file).to_pandas().set_index("index")
+        # Ensure existing_df index is timezone-naive for consistent comparison
+        if hasattr(existing_df.index, "tz") and existing_df.index.tz is not None:
+            existing_df.index = existing_df.index.tz_localize(None)
 
-        # Determine extended range with buffer
-        download_start = min(start_ts, cached_start) - pd.Timedelta(days=30)
-        download_end = max(end_ts, cached_end) + pd.Timedelta(days=30)
+        # Determine download range:
+        # - Start: earliest of requested start or cached start, with small buffer
+        #   The 7-day buffer accounts for potential data corrections/adjustments
+        #   that yfinance might apply to recent historical data
+        # - End: use current date (today) as end since we can't get future data
+        #   yfinance will return data up to the last available trading day
+        download_start = min(start_ts, cached_start) - pd.Timedelta(days=7)
+        # Don't request future data - use today as the end date
+        today = pd.Timestamp.today().normalize()
+        download_end = today
 
         new_df = self._download_yfinance(symbol, download_start, download_end)
 
         if new_df is not None and not new_df.empty:
+            # Ensure new_df index is also timezone-naive
+            if hasattr(new_df.index, "tz") and new_df.index.tz is not None:
+                new_df.index = new_df.index.tz_localize(None)
+
+            # Concatenate with existing_df FIRST, then new_df SECOND
+            # When removing duplicates with keep="last", this ensures
+            # the freshly downloaded data (new_df) takes precedence over
+            # potentially stale cached data for overlapping dates
             combined_df = pd.concat([existing_df, new_df]).sort_index()
             combined_df = combined_df[~combined_df.index.duplicated(keep="last")]
+
+            # Check if we actually have new data beyond what was cached
+            new_end = combined_df.index.max()
+            if new_end > cached_end:
+                if self.verbose:
+                    self.logger.info(
+                        f"{symbol}: Extended cache from {cached_end.date()} to {new_end.date()}"
+                    )
+
             self._save_to_cache(combined_df, pq_file)
 
             mask = (combined_df.index >= start_ts) & (combined_df.index <= end_ts)
             return combined_df[mask]
 
-        # Fallback to existing cache
+        # Fallback to existing cache if download failed
+        if self.verbose:
+            self.logger.warning(
+                f"{symbol}: Download returned no data, using cached data"
+            )
         mask = (existing_df.index >= start_ts) & (existing_df.index <= end_ts)
         return existing_df[mask]
 
@@ -387,6 +433,8 @@ class MarketDataLoader:
             )
 
             if df.empty:
+                if self.verbose:
+                    self.logger.warning(f"{symbol}: yfinance returned empty data")
                 return None
 
             df.columns = [col.lower() for col in df.columns]
@@ -394,7 +442,9 @@ class MarketDataLoader:
             df = df[required_cols]
             return self._standardise(df)
 
-        except Exception:
+        except Exception as e:
+            if self.verbose:
+                self.logger.warning(f"{symbol}: yfinance download failed: {e}")
             return None
 
     def _save_to_cache(self, df: pd.DataFrame, pq_file: Path):

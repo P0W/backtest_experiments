@@ -6,10 +6,13 @@ to refresh the historical market data stored in the `data_parquet` directory.
 
 It iterates through all existing `.parquet` files, identifies the stock symbols,
 and uses the MarketDataLoader to efficiently download only the latest incremental data.
+
+Note: Uses Indian Standard Time (IST) for date calculations since this is for
+NSE/BSE Indian stock market data. NSE trading hours are 9:15 AM - 3:30 PM IST.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from utils import MarketDataLoader
@@ -23,10 +26,44 @@ logging.basicConfig(
 
 # --- Configuration ---
 DATA_DIRECTORY = "data_parquet"
+
+# Indian Standard Time offset (UTC+5:30)
+IST_OFFSET = timezone(timedelta(hours=5, minutes=30))
+
+
+def get_ist_dates() -> tuple[datetime, datetime]:
+    """
+    Calculate start and end dates using Indian Standard Time (IST).
+
+    Returns dates in IST timezone for proper alignment with NSE/BSE trading calendar.
+    The end date is set to yesterday (IST) to ensure we request data for completed
+    trading days only, avoiding issues with requesting data for days that haven't
+    completed trading yet.
+
+    Returns:
+        Tuple of (start_date, end_date) as timezone-naive datetime objects.
+    """
+    # Get current time in IST
+    now_ist = datetime.now(IST_OFFSET)
+
+    # Use yesterday as end date to ensure we get completed trading day data
+    # This avoids issues when the script runs before market close
+    end_date_ist = now_ist - timedelta(days=1)
+
+    # Start date is 5 years before end date
+    start_date_ist = end_date_ist - timedelta(days=5 * 365)
+
+    # Return as timezone-naive for compatibility with pandas/yfinance
+    # (yfinance handles timezone conversion internally for Indian stocks)
+    return (
+        start_date_ist.replace(tzinfo=None),
+        end_date_ist.replace(tzinfo=None),
+    )
+
+
 # Load data for the last 5 years to ensure history is complete.
 # The loader is smart and will only fetch missing data.
-START_DATE = datetime.now() - timedelta(days=5 * 365)
-END_DATE = datetime.now()
+START_DATE, END_DATE = get_ist_dates()
 
 
 def get_symbols_from_directory(directory: str) -> list[str]:
