@@ -427,7 +427,7 @@ class MarketDataLoader:
                 end=end,
                 auto_adjust=True,
                 back_adjust=False,
-                repair=True,
+                repair=False,  # Disabled due to "output array is read-only" errors with numpy 2.x/pandas 3.x
                 keepna=False,
                 actions=False,
             )
