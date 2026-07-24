@@ -8,7 +8,6 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
 from pathlib import Path
-from typing import List, Optional, Union
 
 import backtrader as bt
 import pandas as pd
@@ -142,14 +141,14 @@ class MarketDataLoader:
 
     def load_market_data(
         self,
-        symbols: List[str],
-        start_date: Union[datetime, date],
-        end_date: Union[datetime, date],
+        symbols: list[str],
+        start_date: datetime | date,
+        end_date: datetime | date,
         force_refresh: bool = False,
         use_parallel: bool = True,
         max_workers: int = 4,
         interval: str = "1d",
-    ) -> List[bt.feeds.PandasData]:
+    ) -> list[bt.feeds.PandasData]:
         """Load market data with intelligent caching."""
         return self.load(
             symbols=symbols,
@@ -163,14 +162,14 @@ class MarketDataLoader:
 
     def load(
         self,
-        symbols: List[str],
-        start: Union[str, datetime, date],
-        end: Union[str, datetime, date],
+        symbols: list[str],
+        start: str | datetime | date,
+        end: str | datetime | date,
         interval: str = "1d",
         force_refresh: bool = False,
         use_parallel: bool = True,
         max_workers: int = 4,
-    ) -> List[bt.feeds.PandasData]:
+    ) -> list[bt.feeds.PandasData]:
         """Smart loading that only downloads what's needed."""
         start_ts = pd.Timestamp(start).normalize()
         end_ts = pd.Timestamp(end).normalize()
@@ -191,12 +190,12 @@ class MarketDataLoader:
 
     def _load_sequential(
         self,
-        symbols: List[str],
+        symbols: list[str],
         start_ts: pd.Timestamp,
         end_ts: pd.Timestamp,
         interval: str,
         force_refresh: bool,
-    ) -> List[bt.feeds.PandasData]:
+    ) -> list[bt.feeds.PandasData]:
         """Sequential loading with smart caching."""
         feeds = []
         iterator = tqdm(symbols, desc="Loading data")
@@ -217,13 +216,13 @@ class MarketDataLoader:
 
     def _load_parallel(
         self,
-        symbols: List[str],
+        symbols: list[str],
         start_ts: pd.Timestamp,
         end_ts: pd.Timestamp,
         interval: str,
         force_refresh: bool,
         max_workers: int,
-    ) -> List[bt.feeds.PandasData]:
+    ) -> list[bt.feeds.PandasData]:
         """Parallel loading for faster processing."""
         feeds = []
 
@@ -478,7 +477,7 @@ class MarketDataLoader:
         df = df.dropna()
         return df
 
-    def clear_cache(self, pattern: Optional[str] = None) -> int:
+    def clear_cache(self, pattern: str | None = None) -> int:
         """Clear cached parquet files."""
         deleted_count = 0
         for file_path in self.cache_dir.glob("*.parquet"):

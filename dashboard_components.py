@@ -534,7 +534,7 @@ class DashboardComponents:
                 if isinstance(value, float):
                     line += f"{param.replace('_', ' ').title():<20}: {value:<10.3f}"
                 else:
-                    line += f"{param.replace('_', ' ').title():<20}: {str(value):<10}"
+                    line += f"{param.replace('_', ' ').title():<20}: {value!s:<10}"
             else:
                 line += " " * 32
 
@@ -546,7 +546,7 @@ class DashboardComponents:
                 if isinstance(value, float):
                     line += f"{param.replace('_', ' ').title():<20}: {value:<10.3f}"
                 else:
-                    line += f"{param.replace('_', ' ').title():<20}: {str(value):<10}"
+                    line += f"{param.replace('_', ' ').title():<20}: {value!s:<10}"
 
             params_text += line + "\n"
 

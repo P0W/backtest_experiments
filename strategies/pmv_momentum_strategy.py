@@ -10,7 +10,7 @@ This strategy identifies momentum using a combination of price action, volume,
 technical indicators like RSI, and comparative metrics like VWAP.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import backtrader as bt
 import numpy as np
@@ -37,8 +37,8 @@ class PMVMomentumStrategy(BaseStrategy):
     def __init__(self):
         super().__init__()
         # keep original attribute names
-        self.entry_dates: Dict[str, int] = {}  # bar index of entry
-        self.peak_prices: Dict[str, float] = {}
+        self.entry_dates: dict[str, int] = {}  # bar index of entry
+        self.peak_prices: dict[str, float] = {}
 
         # lightweight indicators
         self.inds = {}
@@ -342,7 +342,7 @@ class PMVMomentumConfig(StrategyConfig):
     Configuration for P=MV Momentum Strategy
     """
 
-    def get_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Define the parameter grid for P=MV momentum strategy experiments
         """
@@ -356,7 +356,7 @@ class PMVMomentumConfig(StrategyConfig):
             "printlog": [False, True],  # Include both for testing
         }
 
-    def get_default_params(self) -> Dict[str, Any]:
+    def get_default_params(self) -> dict[str, Any]:
         """
         Get default parameters for P=MV momentum strategy
         """
@@ -370,7 +370,7 @@ class PMVMomentumConfig(StrategyConfig):
             "printlog": True,  # Enable logging by default for debugging
         }
 
-    def validate_params(self, params: Dict[str, Any]) -> bool:
+    def validate_params(self, params: dict[str, Any]) -> bool:
         """
         Validate P=MV momentum strategy parameters
         """
@@ -406,7 +406,7 @@ class PMVMomentumConfig(StrategyConfig):
         """
         return -1  # Variable number of data feeds
 
-    def get_composite_score_weights(self) -> Dict[str, float]:
+    def get_composite_score_weights(self) -> dict[str, float]:
         """
         Weights for the composite score
         """

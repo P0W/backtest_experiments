@@ -5,7 +5,7 @@ This module provides reusable components for displaying and analyzing
 trading strategy performance results in a comprehensive format.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 from tabulate import tabulate
@@ -23,7 +23,7 @@ class PerformanceDisplayManager:
     """
 
     @staticmethod
-    def get_performance_metrics_table(result: ExperimentResult) -> List[List[str]]:
+    def get_performance_metrics_table(result: ExperimentResult) -> list[list[str]]:
         """Generate financial performance metrics table data"""
         return [
             ["Metric", "Value"],
@@ -37,7 +37,7 @@ class PerformanceDisplayManager:
         ]
 
     @staticmethod
-    def get_risk_metrics_table(result: ExperimentResult) -> List[List[str]]:
+    def get_risk_metrics_table(result: ExperimentResult) -> list[list[str]]:
         """Generate risk metrics table data"""
         return [
             ["Metric", "Value"],
@@ -53,7 +53,7 @@ class PerformanceDisplayManager:
     @staticmethod
     def get_trading_activity_table(
         result: ExperimentResult, symbols_count: int = None
-    ) -> List[List[str]]:
+    ) -> list[list[str]]:
         """Generate trading activity table data"""
         data = [
             ["Metric", "Value"],
@@ -74,7 +74,7 @@ class PerformanceDisplayManager:
         return data
 
     @staticmethod
-    def get_streak_analysis_table(result: ExperimentResult) -> List[List[str]]:
+    def get_streak_analysis_table(result: ExperimentResult) -> list[list[str]]:
         """Generate streak analysis table data"""
         return [
             ["Metric", "Value"],
@@ -85,7 +85,7 @@ class PerformanceDisplayManager:
         ]
 
     @staticmethod
-    def get_parameters_table(params: Dict[str, Any]) -> List[List[str]]:
+    def get_parameters_table(params: dict[str, Any]) -> list[list[str]]:
         """Generate parameters table data"""
         data = [["Parameter", "Value"]]
         for param, value in params.items():
@@ -93,7 +93,7 @@ class PerformanceDisplayManager:
         return data
 
     @staticmethod
-    def assess_performance_quality(result: ExperimentResult) -> Dict[str, str]:
+    def assess_performance_quality(result: ExperimentResult) -> dict[str, str]:
         """Assess the quality of performance metrics"""
         assessments = {}
 
@@ -163,7 +163,7 @@ class PerformanceDisplayManager:
 
     @classmethod
     def display_single_result_performance(
-        cls, result: ExperimentResult, title: str, params: Dict[str, Any] = None
+        cls, result: ExperimentResult, title: str, params: dict[str, Any] = None
     ):
         """Display comprehensive performance for a single result"""
         print(f"\n{title}")
@@ -275,8 +275,8 @@ class StatisticsDisplayManager:
 
     @staticmethod
     def get_statistics_table(
-        df: pd.DataFrame, columns: List[str], column_names: List[str]
-    ) -> List[List[str]]:
+        df: pd.DataFrame, columns: list[str], column_names: list[str]
+    ) -> list[list[str]]:
         """Generate statistics table for given columns"""
         stats_data = [["Metric", "Mean", "Median", "Std", "Min", "Max", "Best 25%"]]
 
@@ -420,10 +420,10 @@ class SingleStrategyAnalyzer:
     def display_comprehensive_analysis(
         cls,
         result: ExperimentResult,
-        symbols: List[str],
+        symbols: list[str],
         start_date,
         end_date,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         strategy_name: str,
     ):
         """Display comprehensive performance details for a single strategy run"""
@@ -460,7 +460,7 @@ class SingleStrategyAnalyzer:
 
     @staticmethod
     def _display_strategy_overview(
-        result: ExperimentResult, symbols: List[str], start_date, end_date
+        result: ExperimentResult, symbols: list[str], start_date, end_date
     ):
         """Display strategy overview section"""
         print("\n🎯 STRATEGY OVERVIEW")
@@ -624,7 +624,7 @@ class SingleStrategyAnalyzer:
         print(tabulate(risk_data, headers="firstrow", tablefmt="grid"))
 
     @staticmethod
-    def _display_strategy_parameters(params: Dict[str, Any]):
+    def _display_strategy_parameters(params: dict[str, Any]):
         """Display strategy parameters"""
         print("\n🎯 STRATEGY PARAMETERS USED")
         print(
@@ -688,7 +688,7 @@ class SingleStrategyAnalyzer:
         print("\n📊 Dashboard saved with comprehensive visual analytics!")
 
     @staticmethod
-    def _generate_performance_insights(result: ExperimentResult) -> List[str]:
+    def _generate_performance_insights(result: ExperimentResult) -> list[str]:
         """Generate automated performance insights"""
         insights = []
 

@@ -14,12 +14,23 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.join(os.path.dirname(__file__), "strategies"))
 
 from experiment_framework import UnifiedExperimentFramework
-from nifty_universe import (get_available_sectors, get_available_universes,
-                            get_nifty_universe, get_sector_info,
-                            get_sector_stocks, get_universe_info)
-from strategies import (AdaptiveMomentumConfig, ETFMomentumConfig,
-                        NiftyShopConfig, PairsConfig, PMVMomentumConfig,
-                        PortfolioMeanReversionConfig, StatisticalTrendConfig)
+from nifty_universe import (
+    get_available_sectors,
+    get_available_universes,
+    get_nifty_universe,
+    get_sector_info,
+    get_sector_stocks,
+    get_universe_info,
+)
+from strategies import (
+    AdaptiveMomentumConfig,
+    ETFMomentumConfig,
+    NiftyShopConfig,
+    PairsConfig,
+    PMVMomentumConfig,
+    PortfolioMeanReversionConfig,
+    StatisticalTrendConfig,
+)
 
 # Registry of available strategies
 STRATEGY_REGISTRY = {

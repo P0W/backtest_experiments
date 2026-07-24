@@ -8,7 +8,7 @@ It defines the interface for strategy configuration and ensures consistency acro
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import backtrader as bt
 
@@ -21,7 +21,7 @@ class ExperimentResult:
     Data class to store experiment results
     """
 
-    params: Dict[str, Any]
+    params: dict[str, Any]
     total_return: float
     sharpe_ratio: float
     max_drawdown: float
@@ -33,8 +33,8 @@ class ExperimentResult:
     win_rate: float = 0.0
     profit_factor: float = 0.0
     composite_score: float = 0.0
-    portfolio_values: Optional[List[float]] = field(default=None)
-    dates: Optional[List[Any]] = field(default=None)
+    portfolio_values: list[float] | None = field(default=None)
+    dates: list[Any] | None = field(default=None)
 
     # Enhanced trade statistics
     max_winning_streak: int = 0
@@ -63,27 +63,25 @@ class StrategyConfig(ABC):
     """
 
     @abstractmethod
-    def get_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Define the parameter grid for strategy experiments
 
         Returns:
             Dict[str, List[Any]]: Dictionary mapping parameter names to lists of values to test
         """
-        pass
 
     @abstractmethod
-    def get_default_params(self) -> Dict[str, Any]:
+    def get_default_params(self) -> dict[str, Any]:
         """
         Get default parameters for the strategy
 
         Returns:
             Dict[str, Any]: Dictionary of default parameter values
         """
-        pass
 
     @abstractmethod
-    def validate_params(self, params: Dict[str, Any]) -> bool:
+    def validate_params(self, params: dict[str, Any]) -> bool:
         """
         Validate strategy parameters
 
@@ -93,7 +91,6 @@ class StrategyConfig(ABC):
         Returns:
             bool: True if parameters are valid, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_strategy_class(self) -> type:
@@ -103,7 +100,6 @@ class StrategyConfig(ABC):
         Returns:
             type: The strategy class that implements bt.Strategy
         """
-        pass
 
     @abstractmethod
     def get_required_data_feeds(self) -> int:
@@ -113,9 +109,8 @@ class StrategyConfig(ABC):
         Returns:
             int: Number of required data feeds, or -1 for variable number
         """
-        pass
 
-    def get_composite_score_weights(self) -> Dict[str, float]:
+    def get_composite_score_weights(self) -> dict[str, float]:
         """
         Get weights for composite score calculation
 
@@ -124,7 +119,7 @@ class StrategyConfig(ABC):
         """
         return {"total_return": 0.4, "sharpe_ratio": 0.3, "max_drawdown": 0.3}
 
-    def calculate_composite_score(self, metrics: Dict[str, float]) -> float:
+    def calculate_composite_score(self, metrics: dict[str, float]) -> float:
         """
         Calculate a composite score for ranking experiments
 
@@ -210,7 +205,6 @@ class BaseStrategy(bt.Strategy):
 
         This method must be implemented by each strategy to define its trading logic.
         """
-        pass
 
     def get_win_rate(self) -> float:
         """Calculate win rate"""

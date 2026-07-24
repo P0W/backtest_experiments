@@ -9,7 +9,7 @@ with momentum filters using EMA and ADX indicators.
 """
 
 from datetime import time
-from typing import Any, Dict, List
+from typing import Any
 
 import backtrader as bt
 import numpy as np
@@ -284,7 +284,7 @@ class StatisticalTrendConfig(StrategyConfig):
     Configuration for Pure-equity Stat-Trend Hybrid Strategy
     """
 
-    def get_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Define the parameter grid for statistical trend strategy experiments
         """
@@ -303,7 +303,7 @@ class StatisticalTrendConfig(StrategyConfig):
             "short": [False, True],
         }
 
-    def get_intraday_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_intraday_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Define parameter grid optimized for intraday (5m, 15m) trading
         """
@@ -322,7 +322,7 @@ class StatisticalTrendConfig(StrategyConfig):
             "short": [False, True],
         }
 
-    def get_default_params(self) -> Dict[str, Any]:
+    def get_default_params(self) -> dict[str, Any]:
         """
         Get default parameters for statistical trend strategy
         """
@@ -344,7 +344,7 @@ class StatisticalTrendConfig(StrategyConfig):
             "printlog": True,  # Enable logging to debug
         }
 
-    def get_intraday_default_params(self) -> Dict[str, Any]:
+    def get_intraday_default_params(self) -> dict[str, Any]:
         """
         Get default parameters optimized for intraday trading
         """
@@ -366,7 +366,7 @@ class StatisticalTrendConfig(StrategyConfig):
             "printlog": True,
         }
 
-    def validate_params(self, params: Dict[str, Any]) -> bool:
+    def validate_params(self, params: dict[str, Any]) -> bool:
         """
         Validate statistical trend strategy parameters
         """
@@ -424,7 +424,7 @@ class StatisticalTrendConfig(StrategyConfig):
         """
         return -1  # Variable number of data feeds
 
-    def get_composite_score_weights(self) -> Dict[str, float]:
+    def get_composite_score_weights(self) -> dict[str, float]:
         """
         Weights optimized for stat-trend hybrid strategy
         """
