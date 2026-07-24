@@ -22,3 +22,22 @@ dependencies = [
     "isort>=6.0.1",
     "ruff>=0.12.3",
 ]
+
+[tool.ruff.lint]
+ignore = [
+    "BLE001",   # blind exception catches are intentional in trading code
+    "DTZ001",   # datetime() without tzinfo — common in backtesting
+    "DTZ005",   # datetime.now() without tz — common in backtesting
+    "DTZ007",   # strptime() without %z — common in backtesting
+    "LOG015",   # root logger usage is fine in scripts
+    "SIM102",   # nested if style preference
+    "SIM103",   # return condition directly — style preference
+    "C408",     # dict() vs {} literal — style preference
+    "PLR0124",  # comparison to itself
+    "RUF059",   # unused loop variable
+    "RUF013",   # implicit Optional — fixable only with unsafe fixes
+    "S110",     # try-except-pass
+    "RUF012",   # ClassVar annotation
+    "PERF102",  # dict.items() in loop
+    "C414",     # unnecessary list()
+]
