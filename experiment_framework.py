@@ -14,7 +14,7 @@ import traceback
 import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import backtrader as bt
 import matplotlib.pyplot as plt
@@ -23,9 +23,11 @@ import seaborn as sns
 from tqdm import tqdm
 
 from dashboard_components import DashboardComponents
-from performance_display import (PerformanceDisplayManager,
-                                 SingleStrategyAnalyzer,
-                                 StatisticsDisplayManager)
+from performance_display import (
+    PerformanceDisplayManager,
+    SingleStrategyAnalyzer,
+    StatisticsDisplayManager,
+)
 from strategies.base_strategy import ExperimentResult, StrategyConfig
 from streak_analyzer import DetailedTradeAnalyzer, StreakAnalyzer
 from utils import IndianBrokerageCommission, MarketDataLoader
@@ -63,13 +65,13 @@ class UnifiedExperimentFramework:
         if not os.path.exists(self.strategy_results_dir):
             os.makedirs(self.strategy_results_dir)
 
-        self.results: List[ExperimentResult] = []
-        self.best_result: Optional[ExperimentResult] = None
+        self.results: list[ExperimentResult] = []
+        self.best_result: ExperimentResult | None = None
         self.best_score = -float("inf")
 
     def generate_parameter_combinations(
         self, max_combinations: int = 100, interval: str = "1d"
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Generate parameter combinations for testing
 
@@ -115,11 +117,11 @@ class UnifiedExperimentFramework:
 
     def prepare_data_feeds(
         self,
-        symbols: List[str],
+        symbols: list[str],
         start_date: datetime,
         end_date: datetime,
         interval: str = "1d",
-    ) -> List[bt.feeds.PandasData]:
+    ) -> list[bt.feeds.PandasData]:
         """
         Prepare data feeds for the strategy
 
@@ -197,14 +199,14 @@ class UnifiedExperimentFramework:
 
     def run_single_experiment(
         self,
-        params: Dict[str, Any],
-        symbols: List[str],
+        params: dict[str, Any],
+        symbols: list[str],
         start_date: datetime,
         end_date: datetime,
         initial_cash: float = 1000000,
-        preloaded_data_feeds: List[bt.feeds.PandasData] = None,
+        preloaded_data_feeds: list[bt.feeds.PandasData] = None,
         interval: str = "1d",
-    ) -> Optional[ExperimentResult]:
+    ) -> ExperimentResult | None:
         """
         Run a single experiment with given parameters
 
@@ -408,16 +410,16 @@ class UnifiedExperimentFramework:
             return experiment_result
 
         except Exception as e:
-            logger.error(f"Experiment failed: {str(e)}")
+            logger.error(f"Experiment failed: {e!s}")
             logger.error("Full traceback:")
             logger.error(traceback.format_exc())
             return None
 
     def run_experiments(
         self,
-        symbols: List[str],
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        symbols: list[str],
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         max_combinations: int = 50,
         initial_cash: float = 1000000,
         use_parallel: bool = True,
@@ -868,7 +870,7 @@ class UnifiedExperimentFramework:
     def create_portfolio_dashboard(
         self,
         result: ExperimentResult,
-        symbols: List[str],
+        symbols: list[str],
         start_date: datetime,
         end_date: datetime,
         strategy_class=None,
@@ -946,14 +948,14 @@ class UnifiedExperimentFramework:
 
     def run_portfolio_analysis(
         self,
-        symbols: List[str],
+        symbols: list[str],
         start_date: datetime,
         end_date: datetime,
         initial_cash: float = 1000000,
-        params: Dict[str, Any] = None,
+        params: dict[str, Any] = None,
         interval: str = "1d",
         use_fixed_filename: bool = True,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Run portfolio analysis and generate dashboard without experiments
 
@@ -1009,17 +1011,17 @@ class UnifiedExperimentFramework:
     def display_single_strategy_performance(
         self,
         result: ExperimentResult,
-        symbols: List[str],
+        symbols: list[str],
         start_date: datetime,
         end_date: datetime,
-        params: Dict[str, Any],
+        params: dict[str, Any],
     ):
         """Display comprehensive performance details for a single strategy run"""
         SingleStrategyAnalyzer.display_comprehensive_analysis(
             result, symbols, start_date, end_date, params, self.strategy_name
         )
 
-    def get_optimal_parameters(self) -> Optional[Dict[str, Any]]:
+    def get_optimal_parameters(self) -> dict[str, Any] | None:
         """Get the optimal parameters from experiments"""
         if self.best_result:
             return self.best_result.params

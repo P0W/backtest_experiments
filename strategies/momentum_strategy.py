@@ -9,7 +9,7 @@ dynamically selects the top-performing stocks and rebalances the portfolio perio
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any
 
 import backtrader as bt
 import requests
@@ -62,7 +62,7 @@ class MomentumTrendStrategy(BaseStrategy):
                 }
                 self.log(f"Successfully created indicators for {d._name}")
             except Exception as e:
-                self.log(f"ERROR creating indicators for {d._name}: {str(e)}")
+                self.log(f"ERROR creating indicators for {d._name}: {e!s}")
                 import traceback
 
                 self.log(f"Indicator creation traceback for {d._name}:")
@@ -127,7 +127,7 @@ class MomentumTrendStrategy(BaseStrategy):
             return should_exit
 
         except (IndexError, ValueError, KeyError) as e:
-            self.log(f"ERROR in _should_exit for {d._name}: {str(e)}")
+            self.log(f"ERROR in _should_exit for {d._name}: {e!s}")
             return False
 
     def _should_enter(self, d):
@@ -153,7 +153,7 @@ class MomentumTrendStrategy(BaseStrategy):
             return should_enter
 
         except (IndexError, ValueError, KeyError) as e:
-            self.log(f"ERROR in _should_enter for {d._name}: {str(e)}")
+            self.log(f"ERROR in _should_enter for {d._name}: {e!s}")
             return False
 
     def execute_strategy(self):
@@ -181,8 +181,7 @@ class MomentumTrendStrategy(BaseStrategy):
             )
 
             # Update peak and calculate drawdown
-            if current_value > self.peak_value:
-                self.peak_value = current_value
+            self.peak_value = max(self.peak_value, current_value)
 
             drawdown = (self.peak_value - current_value) / self.peak_value * 100
             self.drawdowns.append(drawdown)
@@ -254,7 +253,7 @@ class MomentumTrendStrategy(BaseStrategy):
                     valid_datas.append(d)
 
                 except Exception as e:
-                    self.log(f"Error checking data validity for {d._name}: {str(e)}")
+                    self.log(f"Error checking data validity for {d._name}: {e!s}")
                     continue  # Skip this data feed if there's an issue
 
             self.log(
@@ -281,7 +280,7 @@ class MomentumTrendStrategy(BaseStrategy):
                             )
                     except (IndexError, KeyError) as e:
                         self.log(
-                            f"Error accessing momentum for {d._name} in sorting phase: {str(e)}"
+                            f"Error accessing momentum for {d._name} in sorting phase: {e!s}"
                         )
                         continue
 
@@ -303,7 +302,7 @@ class MomentumTrendStrategy(BaseStrategy):
                 )
 
             except Exception as e:
-                self.log(f"Error sorting stocks by momentum: {str(e)}")
+                self.log(f"Error sorting stocks by momentum: {e!s}")
                 import traceback
 
                 self.log(f"Sorting traceback: {traceback.format_exc()}")
@@ -353,7 +352,7 @@ class MomentumTrendStrategy(BaseStrategy):
             self.rebalance_counter += 1
 
         except Exception as e:
-            self.log(f"CRITICAL ERROR in execute_strategy: {str(e)}")
+            self.log(f"CRITICAL ERROR in execute_strategy: {e!s}")
             import traceback
 
             self.log(f"Traceback: {traceback.format_exc()}")
@@ -365,7 +364,7 @@ class AdaptiveMomentumConfig(StrategyConfig):
     Configuration for Adaptive Momentum Strategy
     """
 
-    def get_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Define the parameter grid for momentum strategy experiments
         """
@@ -379,7 +378,7 @@ class AdaptiveMomentumConfig(StrategyConfig):
             "rebalance_days": [5, 10, 15, 20, 30],
         }
 
-    def get_default_params(self) -> Dict[str, Any]:
+    def get_default_params(self) -> dict[str, Any]:
         """
         Get default parameters for momentum strategy
         """
@@ -393,7 +392,7 @@ class AdaptiveMomentumConfig(StrategyConfig):
             "rebalance_days": 10,
         }
 
-    def validate_params(self, params: Dict[str, Any]) -> bool:
+    def validate_params(self, params: dict[str, Any]) -> bool:
         """
         Validate momentum strategy parameters
         """
@@ -424,7 +423,7 @@ class AdaptiveMomentumConfig(StrategyConfig):
         """
         return -1  # Variable number of data feeds
 
-    def get_composite_score_weights(self) -> Dict[str, float]:
+    def get_composite_score_weights(self) -> dict[str, float]:
         """
         Weights optimized for momentum strategy
         """

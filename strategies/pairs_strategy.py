@@ -7,7 +7,7 @@ deviates significantly from its historical mean and trades on the expectation th
 will revert to the mean.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import backtrader as bt
 import numpy as np
@@ -322,7 +322,7 @@ class PairsConfig(StrategyConfig):
     Configuration for Pairs Trading Strategy
     """
 
-    def get_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Define the parameter grid for pairs trading experiments
         """
@@ -338,7 +338,7 @@ class PairsConfig(StrategyConfig):
             "min_profit_target": [0.001, 0.002, 0.003, 0.005],
         }
 
-    def get_default_params(self) -> Dict[str, Any]:
+    def get_default_params(self) -> dict[str, Any]:
         """
         Get default parameters for pairs trading strategy
         """
@@ -360,7 +360,7 @@ class PairsConfig(StrategyConfig):
             "risk_per_trade": 0.01,
         }
 
-    def validate_params(self, params: Dict[str, Any]) -> bool:
+    def validate_params(self, params: dict[str, Any]) -> bool:
         """
         Validate pairs trading parameters
         """
@@ -407,7 +407,7 @@ class PairsConfig(StrategyConfig):
         """
         return 2
 
-    def get_composite_score_weights(self) -> Dict[str, float]:
+    def get_composite_score_weights(self) -> dict[str, float]:
         """
         Weights optimized for pairs trading strategy
         """

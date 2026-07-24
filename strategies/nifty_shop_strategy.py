@@ -9,7 +9,7 @@ A simplified momentum-based buy-and-hold strategy that:
 """
 
 from datetime import time
-from typing import Any, Dict, List
+from typing import Any
 
 import backtrader as bt
 
@@ -357,7 +357,7 @@ class NiftyShopConfig(StrategyConfig):
     Configuration for Nifty Shop Strategy
     """
 
-    def get_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Define parameter grid for experiments
         """
@@ -373,7 +373,7 @@ class NiftyShopConfig(StrategyConfig):
             "momentum_lookback": [3, 5, 7, 10],
         }
 
-    def get_default_params(self) -> Dict[str, Any]:
+    def get_default_params(self) -> dict[str, Any]:
         """
         Get default parameters
         """
@@ -389,7 +389,7 @@ class NiftyShopConfig(StrategyConfig):
             "momentum_lookback": 5,
         }
 
-    def validate_params(self, params: Dict[str, Any]) -> bool:
+    def validate_params(self, params: dict[str, Any]) -> bool:
         """
         Validate strategy parameters
         """
@@ -458,7 +458,7 @@ class NiftyShopConfig(StrategyConfig):
         """
         return -1  # Variable number of data feeds
 
-    def get_composite_score_weights(self) -> Dict[str, float]:
+    def get_composite_score_weights(self) -> dict[str, float]:
         """
         Weights for composite score calculation
         """

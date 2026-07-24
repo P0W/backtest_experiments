@@ -6,7 +6,7 @@ and regular rebalancing. The strategy selects top-performing ETFs and
 maintains an equal-weighted portfolio with realistic trading costs.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import backtrader as bt
 import numpy as np
@@ -81,7 +81,7 @@ class ETFMomentumStrategy(BaseStrategy):
                 }
                 self.log(f"Successfully created indicators for {etf_name}")
             except Exception as e:
-                self.log(f"ERROR creating indicators for {etf_name}: {str(e)}")
+                self.log(f"ERROR creating indicators for {etf_name}: {e!s}")
                 self.indicators[etf_name] = {
                     "sma": None,
                     "ema": None,
@@ -139,7 +139,7 @@ class ETFMomentumStrategy(BaseStrategy):
                     f"Prenext: Waiting for more data ({len(available_etfs)} < {self.p.portfolio_size})"
                 )
         except Exception as e:
-            self.log(f"Error in prenext(): {str(e)}")
+            self.log(f"Error in prenext(): {e!s}")
             # Continue to allow strategy to proceed even if prenext fails
 
     def next(self):
@@ -274,7 +274,7 @@ class ETFMomentumStrategy(BaseStrategy):
             self._execute_rebalancing_trades(top_etf_names)
 
         except Exception as e:
-            self.log(f"Error in rebalancing: {str(e)}")
+            self.log(f"Error in rebalancing: {e!s}")
 
     def _calculate_momentum_scores(self):
         """
@@ -375,7 +375,7 @@ class ETFMomentumStrategy(BaseStrategy):
                 )
 
             except Exception as e:
-                self.log(f"Error calculating momentum for {etf_name}: {str(e)}")
+                self.log(f"Error calculating momentum for {etf_name}: {e!s}")
                 continue
 
         self.log(
@@ -400,7 +400,7 @@ class ETFMomentumStrategy(BaseStrategy):
 
             return 0.2  # Default volatility if indicator not available
         except Exception as e:
-            self.log(f"Error calculating market volatility: {str(e)}")
+            self.log(f"Error calculating market volatility: {e!s}")
             return 0.2
 
     def _get_adaptive_momentum_weights(self, market_volatility):
@@ -446,7 +446,7 @@ class ETFMomentumStrategy(BaseStrategy):
 
             return True
         except Exception as e:
-            self.log(f"Error in momentum filters: {str(e)}")
+            self.log(f"Error in momentum filters: {e!s}")
             return False
 
     def _passes_retracement_filter(self, data, current_price):
@@ -480,7 +480,7 @@ class ETFMomentumStrategy(BaseStrategy):
                 return True
 
         except Exception as e:
-            self.log(f"Error in retracement filter for {data._name}: {str(e)}")
+            self.log(f"Error in retracement filter for {data._name}: {e!s}")
             return True
 
     def _passes_ema_filter(self, data, current_price):
@@ -534,7 +534,7 @@ class ETFMomentumStrategy(BaseStrategy):
             return current_volume >= self.p.volume_threshold
 
         except Exception as e:
-            self.log(f"Error in volume filter for {data._name}: {str(e)}")
+            self.log(f"Error in volume filter for {data._name}: {e!s}")
             return True
 
     def _filter_eligible_etfs(self, momentum_scores):
@@ -605,7 +605,7 @@ class ETFMomentumStrategy(BaseStrategy):
                             f"{etf_name}: Removed from entry price tracking (position exited)"
                         )
                     except Exception as e:
-                        self.log(f"Error selling {etf_name}: {str(e)}")
+                        self.log(f"Error selling {etf_name}: {e!s}")
 
             # Enter/adjust positions for target ETFs
             for etf_name in target_etfs:
@@ -677,10 +677,10 @@ class ETFMomentumStrategy(BaseStrategy):
                                     f"{etf_name}: Partial sell - keeping entry price {entry_price:.2f}"
                                 )
                 except Exception as e:
-                    self.log(f"Error processing {etf_name}: {str(e)}")
+                    self.log(f"Error processing {etf_name}: {e!s}")
 
         except Exception as e:
-            self.log(f"Critical error in _execute_rebalancing_trades: {str(e)}")
+            self.log(f"Critical error in _execute_rebalancing_trades: {e!s}")
 
     def _get_data_by_name(self, etf_name):
         """Get data feed by ETF name"""
@@ -695,7 +695,7 @@ class ETFMomentumConfig(StrategyConfig):
     Configuration for ETF Momentum Strategy
     """
 
-    def get_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Define the parameter grid for ETF momentum strategy experiments
 
@@ -715,7 +715,7 @@ class ETFMomentumConfig(StrategyConfig):
             "loss_threshold_pct": [-2.5, -3.0, -5.0],  # 3 options
         }
 
-    def get_intraday_parameter_grid(self) -> Dict[str, List[Any]]:
+    def get_intraday_parameter_grid(self) -> dict[str, list[Any]]:
         """
         Intraday-optimized parameter grid (shorter periods)
 
@@ -735,7 +735,7 @@ class ETFMomentumConfig(StrategyConfig):
             "loss_threshold_pct": [-2.0, -3.0, -5.0],  # 3 options
         }
 
-    def get_default_params(self) -> Dict[str, Any]:
+    def get_default_params(self) -> dict[str, Any]:
         """
         Get default parameters for ETF momentum strategy
         """
@@ -752,7 +752,7 @@ class ETFMomentumConfig(StrategyConfig):
             "loss_threshold_pct": -4.0,
         }
 
-    def validate_params(self, params: Dict[str, Any]) -> bool:
+    def validate_params(self, params: dict[str, Any]) -> bool:
         """
         Validate ETF momentum strategy parameters
         """
@@ -813,7 +813,7 @@ class ETFMomentumConfig(StrategyConfig):
         """
         return -1  # Variable number of data feeds
 
-    def get_composite_score_weights(self) -> Dict[str, float]:
+    def get_composite_score_weights(self) -> dict[str, float]:
         """
         Weights optimized for ETF momentum strategy
         """
