@@ -21,18 +21,18 @@ class ETFMomentumStrategy(BaseStrategy):
 
     params = (
         ("portfolio_size", 5),
-        ("rebalance_frequency", 15),  # Days between rebalancing
+        ("rebalance_frequency", 30),  # Days between rebalancing
         (
             "long_term_period",
-            90,
-        ),  # Long-term momentum period (days) - further reduced for earlier start
+            200,
+        ),  # Long-term momentum period (trading bars)
         (
             "short_term_period",
-            20,
-        ),  # Short-term momentum period (days) - further reduced
-        ("moving_avg_period", 20),  # Moving average filter period - reduced
+            90,
+        ),  # Short-term momentum period (trading bars)
+        ("moving_avg_period", 20),  # Moving average filter period
         ("min_momentum_threshold", 0.0),  # Minimum momentum to consider
-        ("volume_threshold", 100000),  # Minimum daily volume threshold
+        ("volume_threshold", 200000),  # Minimum 30-day average daily volume
         ("use_threshold_rebalancing", False),  # Enable threshold-based rebalancing
         ("profit_threshold_pct", 10.0),  # Profit threshold % to trigger rebalancing
         ("loss_threshold_pct", -5.0),  # Loss threshold % to trigger rebalancing
@@ -94,6 +94,20 @@ class ETFMomentumStrategy(BaseStrategy):
 
         self.log(f"Indicators initialized for {len(self.indicators)} ETFs")
 
+    def notify_order(self, order):
+        """Track actual order fills and rejections"""
+        if order.status == order.Completed:
+            etf_name = order.data._name
+            pos = self.getposition(order.data)
+            if pos.size > 0:
+                self.position_entry_prices[etf_name] = float(order.executed.price)
+            else:
+                self.position_entry_prices.pop(etf_name, None)
+        elif order.status in (order.Canceled, order.Margin, order.Rejected):
+            self.log(
+                f"Order {order.getstatusname()} for {order.data._name}: size={order.size}"
+            )
+
     def prenext(self):
         """
         Called before next() when we don't have enough data for all indicators
@@ -128,16 +142,14 @@ class ETFMomentumStrategy(BaseStrategy):
                 f"Prenext: {len(available_etfs)} ETFs with sufficient data available"
             )
 
-            # If we have enough ETFs to form a portfolio, execute strategy
-            if len(available_etfs) >= self.p.portfolio_size:
+            # Execute as soon as at least 1 ETF has warm data (unfilled slots stay in cash)
+            if len(available_etfs) >= 1:
                 self.log(
-                    f"Prenext: Sufficient ETFs available ({len(available_etfs)} >= {self.p.portfolio_size})"
+                    f"Prenext: Warm ETFs available ({len(available_etfs)} ready)"
                 )
                 self.execute_strategy()
             else:
-                self.log(
-                    f"Prenext: Waiting for more data ({len(available_etfs)} < {self.p.portfolio_size})"
-                )
+                self.log("Prenext: Waiting for warm-up data (0 ETFs ready)")
         except Exception as e:
             self.log(f"Error in prenext(): {e!s}")
             # Continue to allow strategy to proceed even if prenext fails
@@ -156,8 +168,8 @@ class ETFMomentumStrategy(BaseStrategy):
         # Check if it's time to rebalance
         if self._should_rebalance(current_date):
             self.log(f"Rebalancing portfolio on {current_date}")
-            self._rebalance_portfolio(current_date)
-            self.last_rebalance_date = current_date
+            if self._rebalance_portfolio(current_date):
+                self.last_rebalance_date = current_date
 
     def _should_rebalance(self, current_date):
         """Determine if it's time to rebalance the portfolio"""
@@ -165,20 +177,30 @@ class ETFMomentumStrategy(BaseStrategy):
             self.log(f"First rebalance check on {current_date}")
             return True
 
-        # If threshold-based rebalancing is enabled, only use threshold logic
+        days_since_rebalance = (current_date - self.last_rebalance_date).days
+
+        # If threshold-based rebalancing is enabled, check position thresholds;
+        # also re-evaluate on schedule whenever slots are unfilled (e.g. 0-ETF cash exit)
+        # so the strategy can re-enter the market instead of staying permanently in cash.
         if self.p.use_threshold_rebalancing:
-            threshold_rebalance = self._check_threshold_rebalance()
-            if threshold_rebalance:
+            if self._check_threshold_rebalance():
                 self.log("Threshold-based rebalance triggered")
                 return True
-            # Don't do time-based rebalancing when threshold is enabled
+            open_positions = sum(
+                1 for d in self.datas if self.getposition(d).size > 0
+            )
+            if (
+                open_positions < self.p.portfolio_size
+                and days_since_rebalance >= self.p.rebalance_frequency
+            ):
+                self.log(
+                    f"Scheduled cash-slot re-evaluation triggered ({open_positions}/{self.p.portfolio_size} slots filled)"
+                )
+                return True
             return False
 
-        # Time-based rebalancing check (only when threshold is disabled)
-        days_since_rebalance = (current_date - self.last_rebalance_date).days
-        time_based_rebalance = days_since_rebalance >= self.p.rebalance_frequency
-
-        if time_based_rebalance:
+        # Time-based rebalancing check (when threshold mode is disabled)
+        if days_since_rebalance >= self.p.rebalance_frequency:
             self.log(
                 f"Time-based rebalance triggered: {days_since_rebalance} days >= {self.p.rebalance_frequency} threshold"
             )
@@ -240,28 +262,31 @@ class ETFMomentumStrategy(BaseStrategy):
         try:
             self.log(f"Starting rebalance process on {current_date}")
 
-            # Calculate momentum scores for all ETFs
+            has_warm_data = any(self._has_sufficient_data(d) for d in self.datas)
+            if not has_warm_data:
+                self.log("Insufficient warm-up data across universe, skipping rebalance")
+                return False
+
+            # Calculate momentum scores for ETFs passing trend/retracement/volume filters
             momentum_scores = self._calculate_momentum_scores()
-
-            if not momentum_scores:
-                self.log("No valid momentum scores calculated, skipping rebalance")
-                return
-
             self.log(f"Calculated momentum scores for {len(momentum_scores)} ETFs")
 
-            # Filter ETFs that meet criteria
-            eligible_etfs = self._filter_eligible_etfs(momentum_scores)
+            # Filter ETFs that meet momentum threshold
+            eligible_etfs = (
+                self._filter_eligible_etfs(momentum_scores) if momentum_scores else []
+            )
 
             if len(eligible_etfs) == 0:
-                self.log("No eligible ETFs found - cannot rebalance")
-                return
-
-            # Use available ETFs if fewer than portfolio size (but at least 1)
-            target_portfolio_size = min(self.p.portfolio_size, len(eligible_etfs))
+                self.log(
+                    "No eligible ETFs found - exiting existing positions to cash"
+                )
+                self._execute_rebalancing_trades([])
+                return True
 
             if len(eligible_etfs) < self.p.portfolio_size:
                 self.log(
-                    f"Only {len(eligible_etfs)} eligible ETFs found, using all {target_portfolio_size} instead of target {self.p.portfolio_size}"
+                    f"Only {len(eligible_etfs)} eligible ETFs found (target {self.p.portfolio_size}); "
+                    f"capping each at {100.0 / self.p.portfolio_size:.1f}% and holding remaining slots in cash"
                 )
 
             # Select top ETFs
@@ -272,9 +297,11 @@ class ETFMomentumStrategy(BaseStrategy):
 
             # Execute rebalancing trades
             self._execute_rebalancing_trades(top_etf_names)
+            return True
 
         except Exception as e:
             self.log(f"Error in rebalancing: {e!s}")
+            return False
 
     def _calculate_momentum_scores(self):
         """
@@ -317,16 +344,18 @@ class ETFMomentumStrategy(BaseStrategy):
                     ):
                         continue
 
-                    # Get returns from BackTrader indicators (convert from percentage)
-                    long_return = roc_long[0] / 100.0
-                    short_return = roc_short[0] / 100.0
+                    # bt.ind.RateOfChange already returns decimal ratio ((close / close[-n]) - 1)
+                    long_return = roc_long[0]
+                    short_return = roc_short[0]
 
-                    # Get volume data
-                    current_volume = d.volume[0] if hasattr(d, "volume") else 1000000
+                    # Require valid 30-day average volume (fail closed if missing)
+                    current_volume = (
+                        d.volume[0] if hasattr(d, "volume") and len(d.volume) > 0 else np.nan
+                    )
                     avg_volume_30day = (
                         volume_sma_30[0]
                         if volume_sma_30 and len(volume_sma_30) > 0
-                        else current_volume
+                        else np.nan
                     )
 
                     # Skip if essential values are invalid
@@ -334,6 +363,7 @@ class ETFMomentumStrategy(BaseStrategy):
                         np.isnan(long_return)
                         or np.isnan(short_return)
                         or np.isnan(current_price)
+                        or current_price <= 0
                     ):
                         continue
 
@@ -384,19 +414,17 @@ class ETFMomentumStrategy(BaseStrategy):
         return momentum_scores
 
     def _calculate_market_volatility(self):
-        """Calculate market volatility using BackTrader indicators"""
+        """Calculate market volatility using NIFTYBEES.NS (or first feed fallback)"""
         try:
-            # Use first ETF's volatility indicator as market proxy
-            market_data = self.datas[0]
+            market_data = self._get_data_by_name("NIFTYBEES.NS") or self.datas[0]
             etf_name = market_data._name
             indicators = self.indicators.get(etf_name, {})
             volatility_indicator = indicators.get("volatility")
 
             if volatility_indicator and len(volatility_indicator) > 0:
-                # BackTrader StandardDeviation gives daily volatility, annualize it
                 daily_vol = volatility_indicator[0]
                 if not np.isnan(daily_vol):
-                    return daily_vol * np.sqrt(252)  # Annualized volatility
+                    return daily_vol * np.sqrt(252)
 
             return 0.2  # Default volatility if indicator not available
         except Exception as e:
@@ -426,7 +454,7 @@ class ETFMomentumStrategy(BaseStrategy):
 
     def _has_sufficient_data(self, data):
         """Check if ETF has sufficient data points"""
-        min_data_points = max(self.p.long_term_period, 50)  # Minimum 50 data points
+        min_data_points = max(self.p.long_term_period + 1, 50)
         return len(data) >= min_data_points
 
     def _apply_momentum_filters(self, data, current_price, avg_volume_30day):
@@ -452,20 +480,18 @@ class ETFMomentumStrategy(BaseStrategy):
     def _passes_retracement_filter(self, data, current_price):
         """Check if ETF passes retracement filter using BackTrader Highest indicator"""
         try:
-            # Use existing parameters: if price has fallen more than 25% from recent high, skip
             max_retracement = 0.25  # 25% maximum retracement
 
-            # Get the Highest indicator for this ETF
             indicators = self.indicators.get(data._name, {})
             highest_indicator = indicators.get("highest")
 
             if highest_indicator is None or len(highest_indicator) == 0:
-                return True  # Pass filter if indicator not available
+                return False
 
             try:
                 peak_price = highest_indicator[0]
                 if np.isnan(peak_price) or peak_price <= 0:
-                    return True
+                    return False
 
                 retracement = (peak_price - current_price) / peak_price
                 passed = retracement <= max_retracement
@@ -477,27 +503,25 @@ class ETFMomentumStrategy(BaseStrategy):
 
                 return passed
             except (IndexError, TypeError):
-                return True
+                return False
 
         except Exception as e:
             self.log(f"Error in retracement filter for {data._name}: {e!s}")
-            return True
+            return False
 
     def _passes_ema_filter(self, data, current_price):
         """Check if current price is above EMA (using BackTrader EMA indicator)"""
         try:
-            # Get EMA indicator for this ETF
             indicators = self.indicators.get(data._name, {})
             ema_indicator = indicators.get("ema")
 
             if ema_indicator is None or len(ema_indicator) == 0:
-                # If EMA not available, pass the filter
-                return True
+                return False
 
             try:
                 ema_value = ema_indicator[0]
                 if np.isnan(ema_value):
-                    return True
+                    return False
 
                 passed = current_price > ema_value
                 if not passed:
@@ -507,20 +531,19 @@ class ETFMomentumStrategy(BaseStrategy):
 
                 return passed
             except (IndexError, TypeError):
-                # Not enough data for EMA yet
-                return True
+                return False
 
         except Exception:
-            return True
+            return False
 
     def _passes_volume_filter(self, data, avg_volume_30day=None):
         """Check if average volume meets minimum requirement using BackTrader indicator"""
         try:
-            # If avg_volume_30day is provided (from momentum calculation), use it
             if avg_volume_30day is not None:
+                if np.isnan(avg_volume_30day):
+                    return False
                 return avg_volume_30day >= self.p.volume_threshold
 
-            # Otherwise, get volume from BackTrader indicator
             indicators = self.indicators.get(data._name, {})
             volume_sma_30 = indicators.get("volume_sma_30")
 
@@ -529,21 +552,24 @@ class ETFMomentumStrategy(BaseStrategy):
                 if not np.isnan(avg_volume):
                     return avg_volume >= self.p.volume_threshold
 
-            # Fallback to current volume if indicator not available
-            current_volume = data.volume[0] if hasattr(data, "volume") else 1000000
-            return current_volume >= self.p.volume_threshold
+            return False
 
         except Exception as e:
             self.log(f"Error in volume filter for {data._name}: {e!s}")
-            return True
+            return False
 
     def _filter_eligible_etfs(self, momentum_scores):
         """Filter ETFs based on momentum and liquidity criteria (MomentumCalculator style)"""
         eligible_etfs = []
 
         for etf_name, data in momentum_scores.items():
-            # Apply filters (all filtering already done in momentum calculation)
-            meets_momentum_threshold = data["score"] >= self.p.min_momentum_threshold
+            # Require strictly positive score when threshold is 0.0, else >= threshold
+            if self.p.min_momentum_threshold == 0:
+                meets_momentum_threshold = data["score"] > 0.0
+            else:
+                meets_momentum_threshold = (
+                    data["score"] >= self.p.min_momentum_threshold
+                )
 
             # All other filters (trend, retracement, volume) are already applied in _calculate_momentum_scores
             # This matches MomentumCalculator's approach where filtering is done during calculation
@@ -568,18 +594,20 @@ class ETFMomentumStrategy(BaseStrategy):
 
         Note: All trades are executed in whole shares only to comply with
         Indian market regulations which don't allow fractional share trading.
+        Each ETF slot is capped at 1 / portfolio_size (leaving unfilled slots in cash),
+        and all sell orders are submitted before buy orders to avoid Margin rejections.
         """
         try:
             current_value = self.broker.getvalue()
 
-            # Ensure we have valid portfolio value and target ETFs
-            if current_value <= 0 or len(target_etfs) == 0:
-                self.log(
-                    f"Invalid portfolio value ({current_value}) or no target ETFs ({len(target_etfs)})"
-                )
+            if current_value <= 0:
+                self.log(f"Invalid portfolio value ({current_value})")
                 return
 
-            target_allocation = current_value / len(target_etfs)
+            # Reserve 0.8% buffer for statutory commissions and cheat-on-close cash checks,
+            # and cap each slot at 1 / portfolio_size so unfilled slots stay in cash.
+            usable_value = current_value * 0.992
+            target_allocation = usable_value / self.p.portfolio_size
 
             # Get current positions
             current_positions = {}
@@ -587,27 +615,26 @@ class ETFMomentumStrategy(BaseStrategy):
                 position = self.getposition(d)
                 if position.size != 0:
                     current_positions[d._name] = {
-                        "size": position.size,
+                        "size": int(position.size),
                         "price": position.price,
                         "value": position.size * d.close[0],
                         "data": d,
                     }
 
-            # Exit positions not in target portfolio
+            target_set = set(target_etfs)
+
+            # 1. Submit full exits first
             for etf_name, pos_info in current_positions.items():
-                if etf_name not in target_etfs:
+                if etf_name not in target_set:
                     self.log(f"Exiting position in {etf_name}")
                     try:
                         self.sell(data=pos_info["data"], size=pos_info["size"])
-                        # Remove from entry price tracking
-                        self.position_entry_prices.pop(etf_name, None)
-                        self.log(
-                            f"{etf_name}: Removed from entry price tracking (position exited)"
-                        )
                     except Exception as e:
                         self.log(f"Error selling {etf_name}: {e!s}")
 
-            # Enter/adjust positions for target ETFs
+            # Compute target deltas for target ETFs
+            pending_buys = []
+            pending_sells = []
             for etf_name in target_etfs:
                 etf_data = self._get_data_by_name(etf_name)
                 if etf_data is None:
@@ -619,65 +646,34 @@ class ETFMomentumStrategy(BaseStrategy):
                     target_shares = self.calculate_position_size(
                         target_allocation, current_price
                     )
-
-                    current_position = self.getposition(etf_data)
-                    current_shares = int(
-                        current_position.size
-                    )  # Ensure current shares is integer
-
+                    current_shares = int(self.getposition(etf_data).size)
                     shares_diff = target_shares - current_shares
 
-                    if (
-                        abs(shares_diff) >= 1
-                    ):  # Minimum trade threshold of 1 whole share
-                        if shares_diff > 0:
-                            self.log(f"Buying {shares_diff} shares of {etf_name}")
-                            self.buy(data=etf_data, size=shares_diff)
-                            # Set entry price only for new positions, not for adding to existing ones
-                            if current_shares == 0:
-                                # New position
-                                self.position_entry_prices[etf_name] = current_price
-                                self.log(
-                                    f"{etf_name}: NEW position - Entry price set to {current_price:.2f}"
-                                )
-                            else:
-                                # Adding to existing position - calculate weighted average entry price
-                                if etf_name in self.position_entry_prices:
-                                    old_entry = self.position_entry_prices[etf_name]
-                                    total_shares = current_shares + shares_diff
-                                    weighted_avg = (
-                                        (current_shares * old_entry)
-                                        + (shares_diff * current_price)
-                                    ) / total_shares
-                                    self.position_entry_prices[etf_name] = weighted_avg
-                                    self.log(
-                                        f"{etf_name}: ADDING to position - New weighted avg entry price: {weighted_avg:.2f} (was {old_entry:.2f})"
-                                    )
-                                else:
-                                    # This shouldn't happen but handle it
-                                    self.position_entry_prices[etf_name] = current_price
-                                    self.log(
-                                        f"{etf_name}: Missing entry price - Setting to current: {current_price:.2f}"
-                                    )
-                        else:
-                            self.log(f"Selling {abs(shares_diff)} shares of {etf_name}")
-                            self.sell(data=etf_data, size=abs(shares_diff))
-                            # If completely exiting position, remove from tracking
-                            if current_shares + shares_diff <= 0:
-                                self.position_entry_prices.pop(etf_name, None)
-                                self.log(
-                                    f"{etf_name}: Removed from entry price tracking (position closed)"
-                                )
-                            else:
-                                # Partial sell - keep the same entry price for remaining shares
-                                entry_price = self.position_entry_prices.get(
-                                    etf_name, current_price
-                                )
-                                self.log(
-                                    f"{etf_name}: Partial sell - keeping entry price {entry_price:.2f}"
-                                )
+                    if shares_diff <= -1:
+                        pending_sells.append((etf_name, etf_data, abs(shares_diff)))
+                    elif shares_diff >= 1:
+                        pending_buys.append((etf_name, etf_data, shares_diff))
+                    elif current_shares > 0:
+                        # Refresh threshold baseline for retained positions needing <1 share adjustment
+                        self.position_entry_prices[etf_name] = float(current_price)
                 except Exception as e:
-                    self.log(f"Error processing {etf_name}: {e!s}")
+                    self.log(f"Error sizing {etf_name}: {e!s}")
+
+            # 2. Submit partial-trim sells before buys so cash settles first in broker queue
+            for etf_name, etf_data, sell_qty in pending_sells:
+                try:
+                    self.log(f"Selling {sell_qty} shares of {etf_name}")
+                    self.sell(data=etf_data, size=sell_qty)
+                except Exception as e:
+                    self.log(f"Error selling {etf_name}: {e!s}")
+
+            # 3. Submit buys last
+            for etf_name, etf_data, buy_qty in pending_buys:
+                try:
+                    self.log(f"Buying {buy_qty} shares of {etf_name}")
+                    self.buy(data=etf_data, size=buy_qty)
+                except Exception as e:
+                    self.log(f"Error buying {etf_name}: {e!s}")
 
         except Exception as e:
             self.log(f"Critical error in _execute_rebalancing_trades: {e!s}")

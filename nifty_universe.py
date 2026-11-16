@@ -248,7 +248,7 @@ NIFTY_200_ADDITIONAL = [
 # ETF Universe for Indian market
 ETF_UNIVERSE = [
     "NIFTYBEES.NS",  # Nifty 50 ETF
-    "SETFNN50.NS",  # Nifty Next 50 ETF
+    "JUNIORBEES.NS",  # Nifty Next 50 ETF (replaces renamed/halted SETFNN50.NS)
     "GOLDBEES.NS",  # Gold ETF
     "SILVERBEES.NS",  # Silver ETF
     "CPSEETF.NS",  # CPSE ETF
