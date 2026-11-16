@@ -144,9 +144,7 @@ class ETFMomentumStrategy(BaseStrategy):
 
             # Execute as soon as at least 1 ETF has warm data (unfilled slots stay in cash)
             if len(available_etfs) >= 1:
-                self.log(
-                    f"Prenext: Warm ETFs available ({len(available_etfs)} ready)"
-                )
+                self.log(f"Prenext: Warm ETFs available ({len(available_etfs)} ready)")
                 self.execute_strategy()
             else:
                 self.log("Prenext: Waiting for warm-up data (0 ETFs ready)")
@@ -186,9 +184,7 @@ class ETFMomentumStrategy(BaseStrategy):
             if self._check_threshold_rebalance():
                 self.log("Threshold-based rebalance triggered")
                 return True
-            open_positions = sum(
-                1 for d in self.datas if self.getposition(d).size > 0
-            )
+            open_positions = sum(1 for d in self.datas if self.getposition(d).size > 0)
             if (
                 open_positions < self.p.portfolio_size
                 and days_since_rebalance >= self.p.rebalance_frequency
@@ -264,7 +260,9 @@ class ETFMomentumStrategy(BaseStrategy):
 
             has_warm_data = any(self._has_sufficient_data(d) for d in self.datas)
             if not has_warm_data:
-                self.log("Insufficient warm-up data across universe, skipping rebalance")
+                self.log(
+                    "Insufficient warm-up data across universe, skipping rebalance"
+                )
                 return False
 
             # Calculate momentum scores for ETFs passing trend/retracement/volume filters
@@ -277,9 +275,7 @@ class ETFMomentumStrategy(BaseStrategy):
             )
 
             if len(eligible_etfs) == 0:
-                self.log(
-                    "No eligible ETFs found - exiting existing positions to cash"
-                )
+                self.log("No eligible ETFs found - exiting existing positions to cash")
                 self._execute_rebalancing_trades([])
                 return True
 
@@ -350,7 +346,9 @@ class ETFMomentumStrategy(BaseStrategy):
 
                     # Require valid 30-day average volume (fail closed if missing)
                     current_volume = (
-                        d.volume[0] if hasattr(d, "volume") and len(d.volume) > 0 else np.nan
+                        d.volume[0]
+                        if hasattr(d, "volume") and len(d.volume) > 0
+                        else np.nan
                     )
                     avg_volume_30day = (
                         volume_sma_30[0]
